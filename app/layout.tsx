@@ -4,6 +4,7 @@ import { Geist_Mono, Noto_Sans, Outfit } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
+import { Footer } from "@/components/footer"
 import { cn } from "@/lib/utils"
 
 const outfitHeading = Outfit({ subsets: ["latin"], variable: "--font-heading" })
@@ -43,6 +44,7 @@ export default function RootLayout({
           <div className="octo-bg" aria-hidden />
           <Navbar />
           {children}
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
