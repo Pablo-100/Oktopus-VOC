@@ -303,13 +303,13 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-[1700px] px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">CVE Dashboard</h1>
-          <p className="text-muted-foreground">Priorisation par le risque réel (RBVM · CVSS · EPSS · KEV)</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">CVE Dashboard</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">Priorisation par le risque réel (RBVM · CVSS · EPSS · KEV)</p>
         </div>
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); load(search.trim(), true) }}>
-          <Input placeholder="Rechercher (ex. apache)…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+        <form className="flex w-full flex-wrap gap-2 md:w-auto" onSubmit={(e) => { e.preventDefault(); load(search.trim(), true) }}>
+          <Input placeholder="Rechercher (ex. apache)…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-w-0 flex-1 sm:w-56 sm:flex-none" />
           <Button type="submit" disabled={refreshing}>{refreshing ? "…" : "Rechercher"}</Button>
           <Button type="button" variant="outline" onClick={() => { setSearch(""); load("", true) }}>Actualiser</Button>
           <Button type="button" variant={auto ? "default" : "outline"} onClick={() => setAuto((a) => !a)} title="Auto-actualisation 60s">{auto ? "⏸ Auto" : "▶ Auto"}</Button>
