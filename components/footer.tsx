@@ -65,9 +65,15 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12">
           {/* Marque */}
           <div className="lg:col-span-5">
-            <Link href="/" className="flex items-center gap-2.5">
-              <Image src="/logo.png" alt="OCTUPUS-VOC" width={34} height={34} className="drop-shadow-[0_2px_10px_rgba(139,92,246,0.6)]" />
-              <span className="neon-text text-lg font-bold tracking-wide">OCTUPUS-VOC</span>
+            <Link href="/" className="inline-flex items-center gap-3">
+              <Image src="/logo.png" alt="OCTUPUS VOC" width={44} height={44} className="drop-shadow-[0_2px_12px_rgba(139,92,246,0.6)]" />
+              <span className="flex flex-col leading-tight">
+                <span className="text-xl font-extrabold tracking-tight">
+                  <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">OCTUPUS</span>{" "}
+                  <span className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-transparent">VOC</span>
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">By OCTUPUS</span>
+              </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
               Vulnerability Operations Center — priorisation des vulnérabilités par le <span className="text-foreground">risque réel</span>, en fusionnant CVSS, EPSS et CISA KEV.

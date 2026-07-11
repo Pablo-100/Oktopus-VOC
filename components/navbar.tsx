@@ -53,9 +53,15 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 border-b border-border bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-wide" onClick={() => setMenuOpen(false)}>
-          <Image src="/logo.png" alt="OCTUPUS" width={30} height={30} className="drop-shadow-[0_2px_10px_rgba(139,92,246,0.7)]" />
-          <span className="neon-text">OCTUPUS</span>
+        <Link href="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+          <Image src="/logo.png" alt="OCTUPUS VOC" width={34} height={34} className="drop-shadow-[0_2px_10px_rgba(139,92,246,0.7)]" />
+          <span className="flex flex-col leading-none">
+            <span className="text-sm font-extrabold tracking-tight sm:text-base">
+              <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">OCTUPUS</span>{" "}
+              <span className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-transparent">VOC</span>
+            </span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">By OCTUPUS</span>
+          </span>
         </Link>
 
         {/* ─── Desktop (md+) ─── */}
