@@ -46,50 +46,60 @@ const SOCIALS = [
   },
 ]
 
+function FooterColumn({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{title}</h3>
+      <ul className="space-y-2.5 text-sm">{children}</ul>
+    </div>
+  )
+}
+
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-border bg-gradient-to-b from-transparent to-primary/5">
-      <div className="mx-auto max-w-6xl px-4 py-12">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="mt-20 border-t border-border/70 bg-background/50">
+      {/* fine ligne d'accent en haut */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+      <div className="mx-auto max-w-6xl px-4 py-14">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12">
           {/* Marque */}
-          <div>
-            <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.png" alt="OCTUPUS-VOC" width={32} height={32} className="drop-shadow-[0_2px_10px_rgba(139,92,246,0.7)]" />
+          <div className="lg:col-span-5">
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image src="/logo.png" alt="OCTUPUS-VOC" width={34} height={34} className="drop-shadow-[0_2px_10px_rgba(139,92,246,0.6)]" />
               <span className="neon-text text-lg font-bold tracking-wide">OCTUPUS-VOC</span>
             </Link>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Vulnerability Operations Center — priorisation des vulnérabilités par le <strong className="text-foreground">risque réel</strong> (CVSS · EPSS · CISA KEV).
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              Vulnerability Operations Center — priorisation des vulnérabilités par le <span className="text-foreground">risque réel</span>, en fusionnant CVSS, EPSS et CISA KEV.
             </p>
           </div>
 
           {/* Navigation */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-foreground">Navigation</h3>
-            <ul className="space-y-2 text-sm">
+          <div className="lg:col-span-2">
+            <FooterColumn title="Navigation">
               {NAV.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-muted-foreground transition-colors hover:text-cyan-400">{l.label}</Link>
+                  <Link href={l.href} className="text-muted-foreground transition-colors hover:text-foreground">{l.label}</Link>
                 </li>
               ))}
-            </ul>
+            </FooterColumn>
           </div>
 
           {/* Ressources */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-foreground">Ressources</h3>
-            <ul className="space-y-2 text-sm">
+          <div className="lg:col-span-2">
+            <FooterColumn title="Ressources">
               {RESOURCES.map((l) => (
                 <li key={l.href}>
-                  <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-cyan-400">{l.label}</a>
+                  <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-foreground">{l.label}</a>
                 </li>
               ))}
-            </ul>
+            </FooterColumn>
           </div>
 
-          {/* Connexion */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-foreground">Me contacter</h3>
-            <div className="flex gap-3">
+          {/* Contact */}
+          <div className="lg:col-span-3">
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Contact</h3>
+            <div className="flex gap-2.5">
               {SOCIALS.map((s) => (
                 <a
                   key={s.label}
@@ -98,18 +108,21 @@ export function Footer() {
                   rel="noopener noreferrer"
                   aria-label={s.label}
                   title={s.label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/5 text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:text-cyan-400"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white/[0.03] text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:text-foreground"
                 >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">{s.icon}</svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]">{s.icon}</svg>
                 </a>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-sm text-muted-foreground sm:flex-row">
+        {/* Bas de page */}
+        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-sm text-muted-foreground sm:flex-row">
           <span>© 2026 OCTUPUS-VOC. Tous droits réservés.</span>
-          <span>Développé par <strong className="text-foreground">TBINI Mustapha Amin</strong> 🐙</span>
+          <span>
+            Developed by: <span className="font-medium text-foreground">TBINI Mustapha Amin</span> — <span className="neon-text font-semibold">OCTUPUS</span>
+          </span>
         </div>
       </div>
     </footer>
