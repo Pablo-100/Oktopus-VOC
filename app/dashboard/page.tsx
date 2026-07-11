@@ -308,14 +308,16 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">CVE Dashboard</h1>
           <p className="text-sm text-muted-foreground sm:text-base">Priorisation par le risque réel (RBVM · CVSS · EPSS · KEV)</p>
         </div>
-        <form className="flex w-full flex-wrap gap-2 md:w-auto" onSubmit={(e) => { e.preventDefault(); load(search.trim(), true) }}>
-          <Input placeholder="Rechercher (ex. apache)…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-w-0 flex-1 sm:w-56 sm:flex-none" />
-          <Button type="submit" disabled={refreshing}>{refreshing ? "…" : "Rechercher"}</Button>
-          <Button type="button" variant="outline" onClick={() => { setSearch(""); load("", true) }}>Actualiser</Button>
-          <Button type="button" variant={auto ? "default" : "outline"} onClick={() => setAuto((a) => !a)} title="Auto-actualisation 60s">{auto ? "⏸ Auto" : "▶ Auto"}</Button>
-          <Button type="button" variant={tgAuto ? "default" : "outline"} onClick={toggleTgAuto} title="Envoi auto des CVE High/Critical au bot Telegram (toutes les 60s)">
-            {tgAuto ? "🔔 Telegram ON" : "🔕 Telegram OFF"}
-          </Button>
+        <form className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:w-auto" onSubmit={(e) => { e.preventDefault(); load(search.trim(), true) }}>
+          <Input placeholder="Rechercher (ex. apache)…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-w-0 sm:w-56" />
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:w-full sm:[&_button]:w-auto">
+            <Button type="submit" disabled={refreshing}>{refreshing ? "…" : "Rechercher"}</Button>
+            <Button type="button" variant="outline" onClick={() => { setSearch(""); load("", true) }}>Actualiser</Button>
+            <Button type="button" variant={auto ? "default" : "outline"} onClick={() => setAuto((a) => !a)} title="Auto-actualisation 60s">{auto ? "⏸ Auto" : "▶ Auto"}</Button>
+            <Button type="button" variant={tgAuto ? "default" : "outline"} onClick={toggleTgAuto} title="Envoi auto des CVE High/Critical au bot Telegram (toutes les 60s)">
+              {tgAuto ? "🔔 Telegram ON" : "🔕 Telegram OFF"}
+            </Button>
+          </div>
         </form>
       </div>
       {tgAuto && <p className="mb-3 text-xs text-cyan-400">🔔 Alertes Telegram auto activées — les nouvelles CVE High/Critical partent au bot toutes les 60s (max 20/cycle, sans doublon). {tgInfo}</p>}
