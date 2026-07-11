@@ -17,6 +17,8 @@
 ![Tests](https://img.shields.io/badge/tests-12%2F12-198754)
 ![License](https://img.shields.io/badge/license-Proprietary-red)
 
+**🔗 Démo en ligne — [octupus-voc.vercel.app](https://octupus-voc.vercel.app)**
+
 </div>
 
 ---
@@ -40,6 +42,7 @@
 - [Structure du projet](#-structure-du-projet)
 - [Sécurité](#-sécurité)
 - [Feuille de route](#-feuille-de-route)
+- [Contact / Auteur](#-contact--auteur)
 - [Licence](#-licence)
 
 ---
@@ -146,6 +149,8 @@ sequenceDiagram
     V-->>U: ✅ Redirection connexion → session → accès
 ```
 
+> **Envoi de l'email** : double fournisseur, sélectionné par `EMAIL_PROVIDER` — **Gmail SMTP** (`nodemailer`, gratuit, ~500/jour, aucun domaine requis) ou **Resend** (domaine vérifié, envoi à volume). Email HTML brandé, code **hashé** en base.
+
 ### Garde d'accès (proxy)
 
 ```mermaid
@@ -247,6 +252,10 @@ flowchart LR
 
 ### 👤 Compte & sécurité
 - Providers liés (Google/GitHub/email), **lier/délier**, **sessions actives** (révocation), dernière connexion, suppression de compte.
+
+### 📱 Interface
+- **100 % responsive** (mobile · tablette · desktop) — navbar à **menu hamburger** sur petit écran.
+- **Thème clair / sombre** (design « abyssal neon »), **hero 3D** (Three.js), footer avec liens & contact.
 
 ---
 
@@ -380,6 +389,8 @@ flowchart LR
 3. **Email à tous** : `EMAIL_PROVIDER=gmail` fonctionne immédiatement (~500/jour) ; pour du volume/pro, vérifie un domaine sur **Resend** puis `EMAIL_PROVIDER=resend`.
 4. En prod, `NODE_ENV=production` active automatiquement les cookies `Secure`.
 
+> **Déjà déployé** sur Vercel → **[octupus-voc.vercel.app](https://octupus-voc.vercel.app)**. Chaque `git push` sur `main` **redéploie automatiquement**.
+>
 > Le sous-domaine gratuit `*.vercel.app` sert à **héberger**, pas à envoyer des emails (pas de contrôle DNS pour Resend).
 
 ---
@@ -433,6 +444,19 @@ next-app/
 
 ---
 
+## 📬 Contact / Auteur
+
+Projet conçu et développé par **TBINI Mustapha Amin** — *OCTUPUS*.
+
+| Canal | Lien |
+|---|---|
+| 💼 LinkedIn | [mustapha-amin-tbini](https://www.linkedin.com/in/mustapha-amin-tbini/) |
+| ✉️ Email | [mustaphaamintbini@gmail.com](mailto:mustaphaamintbini@gmail.com) |
+| 🟢 WhatsApp | [+216 46 345 226](https://wa.me/21646345226) |
+| ⚫ GitHub | [Pablo-100](https://github.com/Pablo-100) |
+
+---
+
 ## 📄 Licence
 
 **Propriétaire — Tous droits réservés © 2026 Tbini Mustapha Amin.**
@@ -445,6 +469,6 @@ ni opération (CRUD) sur ce projet ou ses données n'est autorisée **sans l'acc
 
 <div align="center">
 
-**OCTUPUS-VOC** — construit pour prioriser ce qui compte vraiment. 🐙
+**OCTUPUS-VOC** — Developed by TBINI Mustapha Amin — OCTUPUS
 
 </div>
