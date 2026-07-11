@@ -18,7 +18,25 @@ import { sendOtpEmail } from "@/lib/mailer"
 
 const APP_NAME = "OCTUPUS"
 const isProd = process.env.NODE_ENV === "production"
-const baseURL = process.env.BETTER_AUTH_URL || "http://localhost:3000"
+
+// URL de base : BETTER_AUTH_URL explicite, sinon l'URL de prod Vercel (auto), sinon localhost.
+const baseURL =
+  process.env.BETTER_AUTH_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
+
+// Origines de confiance : baseURL + localhost + toutes les URLs Vercel (alias prod, déploiement, branche).
+// Vercel expose ces variables automatiquement -> couvre l'alias ET l'URL avec le hash.
+const trustedOrigins = Array.from(
+  new Set(
+    [
+      baseURL,
+      "http://localhost:3000",
+      process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+      process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+      process.env.VERCEL_BRANCH_URL && `https://${process.env.VERCEL_BRANCH_URL}`,
+    ].filter(Boolean) as string[],
+  ),
+)
 
 // Neon via node-postgres ('pg' ne gère pas channel_binding -> on le retire de l'URL)
 const connectionString = (process.env.DATABASE_URL || "").replace(/&?channel_binding=require/, "")
@@ -40,7 +58,7 @@ export const auth = betterAuth({
   baseURL,
   secret: process.env.BETTER_AUTH_SECRET,
   database: new Pool({ connectionString }),
-  trustedOrigins: [baseURL],
+  trustedOrigins,
 
   // ── Email / Mot de passe ────────────────────────────────────────────────
   emailAndPassword: {
