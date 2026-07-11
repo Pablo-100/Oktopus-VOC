@@ -40,9 +40,9 @@
 }
 
 .dark {
-    --background: oklch(0.145 0.008 326);
+    --background: oklch(0.14 0.03 275);
     --foreground: oklch(0.985 0 0);
-    --card: oklch(0.212 0.019 322.12);
+    --card: oklch(0.19 0.035 278);
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.212 0.019 322.12);
     --popover-foreground: oklch(0.985 0 0);
@@ -126,4 +126,62 @@
   html {
     @apply font-sans;
     }
+}
+
+/* =====================================================================
+   OCTUPUS — Identité visuelle « abyssal neon »
+   ===================================================================== */
+.octo-bg {
+  position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 12% -12%, rgba(139, 92, 246, 0.22), transparent 60%),
+    radial-gradient(1000px 520px at 100% 0%, rgba(34, 211, 238, 0.14), transparent 55%),
+    radial-gradient(900px 700px at 50% 120%, rgba(251, 113, 133, 0.12), transparent 60%),
+    linear-gradient(180deg, #070b16, #0a0f1f 45%, #06080f);
+}
+.octo-bg::after {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(circle at 50% 15%, #000, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at 50% 15%, #000, transparent 78%);
+}
+
+/* Mode clair : fond lumineux (sinon on garderait un fond sombre = illisible) */
+:root:not(.dark) .octo-bg {
+  background:
+    radial-gradient(1200px 600px at 12% -12%, rgba(139, 92, 246, 0.14), transparent 60%),
+    radial-gradient(1000px 520px at 100% 0%, rgba(34, 211, 238, 0.10), transparent 55%),
+    linear-gradient(180deg, #f7f8fc, #eef1f8 45%, #f7f8fc);
+}
+:root:not(.dark) .octo-bg::after {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+}
+:root:not(.dark) .glass { background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6)); border-color: rgba(15,23,42,0.08); }
+
+@keyframes octo-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); } 50% { box-shadow: 0 0 20px 3px rgba(239, 68, 68, 0.6); } }
+@keyframes octo-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes octo-sheen { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.glass { background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.08); }
+.glow-hover { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.glow-hover:hover { transform: translateY(-4px); box-shadow: 0 0 0 1px rgba(139,92,246,0.45), 0 26px 60px -22px rgba(139,92,246,0.6); border-color: rgba(139,92,246,0.5); }
+.neon-text { background: linear-gradient(90deg, #c4b5fd, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.kev-pulse { animation: octo-pulse 2s ease-in-out infinite; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.24em; font-size: 0.7rem; font-weight: 600; color: #22d3ee; }
+
+/* Accent bar au sommet d'une carte au survol */
+.accent-top { position: relative; overflow: hidden; }
+.accent-top::before { content: ""; position: absolute; left: 0; top: 0; height: 2px; width: 100%; transform: scaleX(0); transform-origin: left; transition: transform .35s ease; background: linear-gradient(90deg, #8b5cf6, #fb7185, #22d3ee); }
+.accent-top:hover::before { transform: scaleX(1); }
+
+/* scrollbar néon */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.35); border-radius: 999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.55); }
+*::-webkit-scrollbar-track { background: transparent;
 }
