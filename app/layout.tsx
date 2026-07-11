@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Noto_Sans, Outfit } from "next/font/google"
 
 import "./globals.css"
@@ -15,6 +15,12 @@ export const metadata: Metadata = {
   description:
     "Vulnerability Operations Center : priorisation des CVE par le risque réel (CVSS · EPSS · CISA KEV), threat intelligence et analytics.",
   icons: { icon: "/logo.png", apple: "/logo.png" },
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0a0e1a",
 }
 
 export default function RootLayout({
