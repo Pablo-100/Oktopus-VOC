@@ -119,13 +119,17 @@ async function sendAlerts(vulns: Vuln[]): Promise<number> {
 
   let sent = 0
   for (const v of candidates) {
-    const exists = (await sql`SELECT 1 FROM alerts_sent WHERE cve_id = ${v.cveId} LIMIT 1`) as unknown[]
-    if (exists.length) continue
+    // Réservation ATOMIQUE : seul le 1er process qui insère envoie. Élimine tout doublon,
+    // même si deux runs (cron + manuel) tournent en même temps. Pas de fenêtre SELECT→INSERT.
+    const claim = (await sql`INSERT INTO alerts_sent (cve_id) VALUES (${v.cveId}) ON CONFLICT DO NOTHING RETURNING cve_id`) as unknown[]
+    if (!claim.length) continue // déjà réservé/envoyé -> on saute
     const ok = await sendTelegram(ctxFromVuln(v))
     if (ok) {
-      await sql`INSERT INTO alerts_sent (cve_id) VALUES (${v.cveId}) ON CONFLICT DO NOTHING`
       sent++
       await sleep(400) // courtoisie rate-limit Telegram
+    } else {
+      // échec d'envoi -> on relâche la réservation pour retenter au prochain run
+      await sql`DELETE FROM alerts_sent WHERE cve_id = ${v.cveId}`
     }
   }
   return sent

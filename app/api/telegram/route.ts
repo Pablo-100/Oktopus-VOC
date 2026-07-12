@@ -26,15 +26,18 @@ export async function POST(req: Request) {
   try { ctx = (await req.json()).context } catch { return NextResponse.json({ error: "JSON invalide" }, { status: 400 }) }
   if (!ctx?.cve_id) return NextResponse.json({ error: "context.cve_id requis" }, { status: 400 })
 
-  // Dédup côté serveur (partagé)
+  // Réservation ATOMIQUE (anti-doublon, même en concurrence) : seul le 1er insert envoie.
+  let claimed = true
   try {
     await initDb()
-    const exists = (await sql`SELECT 1 FROM alerts_sent WHERE cve_id = ${ctx.cve_id} LIMIT 1`) as unknown[]
-    if (exists.length) return NextResponse.json({ ok: true, skipped: true })
-  } catch { /* base indisponible -> on continue */ }
+    const claim = (await sql`INSERT INTO alerts_sent (cve_id) VALUES (${ctx.cve_id}) ON CONFLICT DO NOTHING RETURNING cve_id`) as unknown[]
+    if (!claim.length) return NextResponse.json({ ok: true, skipped: true }) // déjà envoyé
+  } catch { claimed = false /* base indispo -> on tente l'envoi sans dédup */ }
 
   const ok = await sendTelegram(ctx)
-  if (!ok) return NextResponse.json({ error: "Échec de l'envoi Telegram" }, { status: 502 })
-  try { await sql`INSERT INTO alerts_sent (cve_id) VALUES (${ctx.cve_id}) ON CONFLICT DO NOTHING` } catch { /* ignore */ }
+  if (!ok) {
+    if (claimed) { try { await sql`DELETE FROM alerts_sent WHERE cve_id = ${ctx.cve_id}` } catch { /* ignore */ } }
+    return NextResponse.json({ error: "Échec de l'envoi Telegram" }, { status: 502 })
+  }
   return NextResponse.json({ ok: true })
 }
