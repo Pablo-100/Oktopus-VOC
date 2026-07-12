@@ -172,6 +172,8 @@ export async function syncCves(opts: { skipAlerts?: boolean } = {}): Promise<Syn
     const vulns = processNvd({ vulnerabilities: raw })
     await enrichServer(vulns)
     await batchUpsert(vulns)
+    // Hygiène : retire de alerts_sent les entrées orphelines (CVE absentes de la base)
+    await sql`DELETE FROM alerts_sent a WHERE NOT EXISTS (SELECT 1 FROM cves c WHERE c.cve_id = a.cve_id)`
     const alerted = opts.skipAlerts ? 0 : await sendAlerts()
 
     const totalRows = (await sql`SELECT COUNT(*)::int AS n FROM cves`) as Array<{ n: number }>
