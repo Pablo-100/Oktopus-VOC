@@ -109,13 +109,19 @@ async function batchUpsert(vulns: Vuln[]): Promise<void> {
   }
 }
 
-/** Alertes Telegram (serveur) : High/Critical/KEV/EPSS élevé, dé-doublonnées. */
-async function sendAlerts(vulns: Vuln[]): Promise<number> {
+/**
+ * Alertes Telegram (serveur) : toutes les CVE qualifiantes EN BASE (High/Critical/KEV/EPSS≥0.5)
+ * PAS encore envoyées — backlog inclus, pas seulement le lot du run. Triées par risque, capées.
+ */
+async function sendAlerts(): Promise<number> {
   if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) return 0
-  const candidates = vulns
-    .filter((v) => v.riskLevel === "Critique" || v.riskLevel === "Élevé" || v.isKev || (v.epss ?? 0) >= 0.5)
-    .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
-    .slice(0, MAX_ALERTS_PER_RUN)
+  const rows = (await sql`
+    SELECT c.data FROM cves c
+    WHERE (c.severity IN ('critical','high') OR c.is_kev = true OR c.epss >= 0.5)
+      AND NOT EXISTS (SELECT 1 FROM alerts_sent a WHERE a.cve_id = c.cve_id)
+    ORDER BY c.risk_score DESC
+    LIMIT ${MAX_ALERTS_PER_RUN}`) as Array<{ data: Vuln }>
+  const candidates = rows.map((r) => r.data)
 
   let sent = 0
   for (const v of candidates) {
@@ -166,7 +172,7 @@ export async function syncCves(opts: { skipAlerts?: boolean } = {}): Promise<Syn
     const vulns = processNvd({ vulnerabilities: raw })
     await enrichServer(vulns)
     await batchUpsert(vulns)
-    const alerted = opts.skipAlerts ? 0 : await sendAlerts(vulns)
+    const alerted = opts.skipAlerts ? 0 : await sendAlerts()
 
     const totalRows = (await sql`SELECT COUNT(*)::int AS n FROM cves`) as Array<{ n: number }>
     const total = totalRows[0]?.n ?? 0

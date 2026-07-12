@@ -6,7 +6,7 @@ name: OCTUPUS CVE Sync
 
 on:
   schedule:
-    - cron: "*/10 * * * *" # toutes les 10 min (GitHub peut retarder de quelques minutes)
+    - cron: "*/5 * * * *" # toutes les 5 min (GitHub peut retarder de quelques minutes)
   workflow_dispatch: {} # bouton "Run workflow" pour un déclenchement manuel
 
 jobs:
