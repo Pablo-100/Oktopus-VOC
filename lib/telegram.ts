@@ -29,19 +29,40 @@ function trunc(s: string, n: number) {
 }
 
 export function buildMessage(c: AlertCtx) {
-  const sev: Record<string, string> = { critical: "⚫ CRITIQUE", high: "🔴 ÉLEVÉE", medium: "🟡 MOYENNE", low: "🟢 FAIBLE" }
+  const sevLabel: Record<string, string> = { critical: "CRITIQUE", high: "ÉLEVÉE", medium: "MOYENNE", low: "FAIBLE" }
+  const sevDot: Record<string, string> = { critical: "🔴", high: "🟠", medium: "🟡", low: "🟢" }
+  const sev = c.severity || "low"
+  const rule = "━━━━━━━━━━━━━━━━━━━━"
   const L: string[] = []
-  L.push("🚨 <b>OCTUPUS — Alerte CVE</b>", "")
-  L.push(`<b>${esc(c.cve_id)}</b>  ${sev[c.severity || ""] || ""}`)
-  if (c.risk_score != null) L.push(`<b>Risk Score:</b> ${c.risk_score}/100 — ${esc(c.risk_level || "")}`)
-  L.push(`<b>CVSS:</b> ${esc(String(c.cvss ?? "-"))}   |   <b>EPSS:</b> ${esc(String(c.epss ?? "-"))}`)
-  if (c.kev) L.push("⚠️ <b>CISA KEV</b> — activement exploité")
-  if (c.exploit) L.push("💥 <b>Exploit public</b> connu")
-  if (c.cwe?.length) L.push(`<b>CWE:</b> ${esc(c.cwe.join(", "))}`)
-  if (c.capec?.length) L.push(`<b>CAPEC:</b> ${esc(c.capec.join(", "))}`)
-  if (c.attack?.length) L.push(`<b>ATT&amp;CK:</b> ${esc(c.attack.join(", "))}`)
-  if (c.description) L.push("", `<b>Description:</b> ${esc(trunc(c.description, 500))}`)
-  L.push("", `🔗 <a href="https://nvd.nist.gov/vuln/detail/${esc(c.cve_id)}">NVD</a>` + (c.advisory ? ` · <a href="${esc(c.advisory)}">Advisory</a>` : ""))
+
+  L.push("<b>OCTUPUS-VOC · Alerte vulnérabilité</b>")
+  L.push("")
+  L.push(`${sevDot[sev] || "⚪"}  <b>${esc(c.cve_id)}</b>`)
+  L.push(`Sévérité : <b>${sevLabel[sev] || "-"}</b>${c.risk_score != null ? `   ·   Risk : <b>${c.risk_score}/100</b> (${esc(c.risk_level || "")})` : ""}`)
+
+  L.push(rule)
+  L.push("<b>Signaux</b>")
+  L.push(`•  CVSS : <code>${esc(String(c.cvss ?? "-"))}</code>`)
+  L.push(`•  EPSS : <code>${esc(String(c.epss ?? "-"))}</code>`)
+  L.push(`•  CISA KEV : <b>${c.kev ? "Oui — activement exploité" : "Non"}</b>`)
+  L.push(`•  Exploit public : <b>${c.exploit ? "Oui" : "Non"}</b>`)
+
+  if (c.cwe?.length || c.capec?.length || c.attack?.length) {
+    L.push(rule)
+    L.push("<b>Faiblesses &amp; techniques</b>")
+    if (c.cwe?.length) L.push(`•  CWE : ${esc(c.cwe.join(", "))}`)
+    if (c.capec?.length) L.push(`•  CAPEC : ${esc(c.capec.join(", "))}`)
+    if (c.attack?.length) L.push(`•  ATT&amp;CK : ${esc(c.attack.join(", "))}`)
+  }
+
+  if (c.description) {
+    L.push(rule)
+    L.push("<b>Description</b>")
+    L.push(esc(trunc(c.description, 400)))
+  }
+
+  L.push(rule)
+  L.push(`🔗 <a href="https://nvd.nist.gov/vuln/detail/${esc(c.cve_id)}">Fiche NVD</a>` + (c.advisory ? `   ·   <a href="${esc(c.advisory)}">Advisory éditeur</a>` : ""))
   return L.join("\n")
 }
 
@@ -81,7 +102,7 @@ export function ctxFromVuln(v: Vuln): AlertCtx {
     risk_score: v.riskScore,
     risk_level: v.riskLevel,
     cvss,
-    epss: v.epss != null ? v.epss.toFixed(4) : null,
+    epss: v.epss != null ? (v.epss * 100).toFixed(1) + "%" : null,
     kev: v.isKev,
     exploit: v.hasExploit,
     cwe: v.cwes,

@@ -15,6 +15,7 @@ function LoginForm() {
   const dest = params.get("redirect") || "/dashboard"
   const urlError = params.get("error")
   const justVerified = params.get("verified") === "1"
+  const justReset = params.get("reset") === "1"
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -45,6 +46,7 @@ function LoginForm() {
       <p className="mb-5 text-sm text-muted-foreground">Accède à ton poste de commande OCTUPUS</p>
 
       {justVerified && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">✅ Email vérifié — connecte-toi pour accéder à ton espace.</p>}
+      {justReset && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">✅ Mot de passe réinitialisé — connecte-toi avec ton nouveau mot de passe.</p>}
 
       <div className="grid gap-2">
         <Button variant="outline" disabled={!!social} onClick={() => withProvider("github")}>
@@ -61,6 +63,7 @@ function LoginForm() {
         <Input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         {shownError && <p className="text-sm text-red-400">⚠️ {shownError}</p>}
         <Button type="submit" disabled={loading}>{loading ? "Connexion…" : "Se connecter"}</Button>
+        <Link href="/forgot-password" className="text-center text-xs text-muted-foreground underline hover:text-foreground">Mot de passe oublié ?</Link>
       </form>
 
       <p className="mt-4 text-sm text-muted-foreground">Pas de compte ? <Link href="/signup" className="text-cyan-400 underline">S&apos;inscrire</Link></p>

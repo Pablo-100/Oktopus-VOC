@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth"
 import { emailOTP } from "better-auth/plugins"
 import { Pool } from "pg"
 import { dash } from "@better-auth/infra"
-import { sendOtpEmail } from "@/lib/mailer"
+import { sendOtpEmail, sendWelcomeEmail } from "@/lib/mailer"
 
 /**
  * Système d'authentification OCTUPUS-VOC — Better Auth (source de vérité unique).
@@ -68,6 +68,21 @@ export const auth = betterAuth({
     // STRICT : aucune session tant que l'email n'est pas vérifié.
     // -> inscription = pas de session (proxy bloque tout), connexion non-vérifiée = refusée.
     requireEmailVerification: true,
+  },
+
+  // ── Email de bienvenue à la création du compte ──────────────────────────
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            await sendWelcomeEmail(user.email, user.name)
+          } catch (e) {
+            console.error("[welcome] envoi échoué:", e)
+          }
+        },
+      },
+    },
   },
 
   // ── Providers OAuth ─────────────────────────────────────────────────────
