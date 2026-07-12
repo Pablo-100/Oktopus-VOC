@@ -115,6 +115,11 @@ export default function DashboardPage() {
     finally { setLoading(false); setRefreshing(false) }
   }
   useEffect(() => { load() }, []) // 1er chargement seulement -> écran de chargement
+  // Filtre pré-appliqué via l'URL (ex. bouton "Voir les CVE de mon parc" -> ?preset=parc)
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("preset")
+    if (p === "parc" || p === "critical" || p === "kev" || p === "exploit" || p === "high-risk") setPreset(p as Preset)
+  }, [])
   // Boucle 60s d'actualisation en arrière-plan (lecture base, instantané)
   useEffect(() => {
     if (!auto) return
