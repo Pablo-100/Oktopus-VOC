@@ -3,7 +3,6 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
-import * as THREE from "three"
 import { Card } from "@/components/ui/card"
 
 /* ------------------------------------------------------------------ 3D bg */
@@ -13,6 +12,11 @@ function useThreeBackground(canvasRef: React.RefObject<HTMLCanvasElement | null>
     if (!canvas) return
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return
 
+    let cleanup: (() => void) | undefined
+    let cancelled = false
+    // Three.js chargé dynamiquement -> hors du bundle initial de l'accueil (perf)
+    import("three").then((THREE) => {
+      if (cancelled || !canvasRef.current) return
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     const scene = new THREE.Scene()
@@ -60,12 +64,14 @@ function useThreeBackground(canvasRef: React.RefObject<HTMLCanvasElement | null>
     }
     animate()
 
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("resize", resize)
-      renderer.dispose()
-    }
+      cleanup = () => {
+        cancelAnimationFrame(raf)
+        window.removeEventListener("mousemove", onMove)
+        window.removeEventListener("resize", resize)
+        renderer.dispose()
+      }
+    })
+    return () => { cancelled = true; cleanup?.() }
   }, [canvasRef])
 }
 

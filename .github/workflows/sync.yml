@@ -1,0 +1,21 @@
+name: OCTUPUS CVE Sync
+
+# Déclenche le collecteur serveur (fetch NVD incrémental -> enrichissement -> PostgreSQL -> Telegram).
+# GRATUIT : GitHub Actions appelle l'endpoint sécurisé toutes les ~10 min.
+# Prérequis : ajouter le secret de dépôt CRON_SECRET (Settings → Secrets and variables → Actions).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *" # toutes les 10 min (GitHub peut retarder de quelques minutes)
+  workflow_dispatch: {} # bouton "Run workflow" pour un déclenchement manuel
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déclencher la synchronisation
+        run: |
+          curl -fsS -m 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://octupus-voc.vercel.app/api/cron/sync" \
+          && echo "✅ Sync déclenchée"

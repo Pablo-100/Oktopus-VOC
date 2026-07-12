@@ -28,7 +28,7 @@ export async function fetchNvd(keyword = ""): Promise<Vuln[]> {
   return processNvd(data);
 }
 
-function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
+export function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
   const items = (data.vulnerabilities ?? []) as Array<{ cve: Record<string, any> }>;
   return items.map(({ cve }) => {
     const metrics = cve.metrics ?? {};
@@ -165,12 +165,20 @@ export async function enrich(vulns: Vuln[]): Promise<Vuln[]> {
   return vulns;
 }
 
-/** Pipeline complet : NVD -> enrichissement -> tri (récent -> ancien). */
+/**
+ * Charge les CVE depuis la BASE (déjà traitées & enrichies par le collecteur serveur).
+ * AUCUN appel NVD côté navigateur -> chargement instantané.
+ * Signature/contrat inchangés (Vuln[] trié récent -> ancien) : le dashboard ne change pas.
+ */
 export async function loadCves(keyword = ""): Promise<Vuln[]> {
-  const vulns = await fetchNvd(keyword);
-  await enrich(vulns);
-  vulns.sort(
-    (a, b) => (b.sortDate?.getTime() ?? 0) - (a.sortDate?.getTime() ?? 0),
-  );
-  return vulns;
+  const url = keyword ? `/api/cves?search=${encodeURIComponent(keyword)}` : "/api/cves";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Chargement CVE ${res.status} (base indisponible ?)`);
+  const { cves } = await res.json();
+  const list = (cves as Vuln[]).map((v) => ({
+    ...v,
+    sortDate: v.sortDate ? new Date(v.sortDate) : null,
+  }));
+  list.sort((a, b) => (b.sortDate?.getTime() ?? 0) - (a.sortDate?.getTime() ?? 0));
+  return list;
 }

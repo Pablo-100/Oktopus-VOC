@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Noto_Sans, Outfit } from "next/font/google"
 
 import "./globals.css"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -15,7 +17,6 @@ export const metadata: Metadata = {
   title: "OCTUPUS — Rise from the deep. Crush every threat",
   description:
     "Vulnerability Operations Center : priorisation des CVE par le risque réel (CVSS · EPSS · CISA KEV), threat intelligence et analytics.",
-  icons: { icon: "/logo.png", apple: "/logo.png" },
 }
 
 export const viewport: Viewport = {
@@ -46,6 +47,8 @@ export default function RootLayout({
           {children}
           <Footer />
         </ThemeProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   )

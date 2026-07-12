@@ -12,26 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { threatFor } from "@/lib/threat"
 import { CveDetailDialog } from "@/components/cve-detail-dialog"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend, LabelList,
 } from "recharts"
-
-const TG_AUTO_KEY = "octopus.tgAuto"   // alertes Telegram auto activées ? (préférence UI locale)
-
-function tgContext(v: Vuln) {
-  const t = threatFor(v)
-  const advisory = v.references.find((r) => r.tags.includes("Vendor Advisory") || r.tags.includes("Patch"))?.url ?? null
-  return {
-    cve_id: v.cveId, severity: v.severity, risk_score: v.riskScore, risk_level: v.riskLevel,
-    cvss: v.cvssV3 !== "-" ? v.cvssV3 : v.cvssV2,
-    epss: v.epss != null ? (v.epss * 100).toFixed(1) + "%" : null,
-    kev: v.isKev, exploit: v.hasExploit, cwe: v.cwes,
-    capec: t.capec.map(([id]) => id), attack: t.attack.map(([id]) => id),
-    description: v.description, advisory,
-  }
-}
 
 const AXIS = "#93a1bd"
 const IMPACT = [{ label: "Aucun", color: "#475569" }, { label: "Faible", color: "#eab308" }, { label: "Élevé", color: "#e11d48" }]
@@ -84,34 +68,7 @@ export default function DashboardPage() {
   const [auto, setAuto] = useState(true)
   const [lastSync, setLastSync] = useState<Date | null>(null)
   const [, tick] = useState(0)
-  // Alertes Telegram automatiques (High/Critical, dé-doublonnées)
-  const [tgAuto, setTgAuto] = useState(false)
-  const [tgInfo, setTgInfo] = useState<string>("")
-  useEffect(() => { setTgAuto(localStorage.getItem(TG_AUTO_KEY) === "1") }, [])
-  function toggleTgAuto() {
-    setTgAuto((prev) => { const next = !prev; localStorage.setItem(TG_AUTO_KEY, next ? "1" : "0"); return next })
-  }
 
-  // Envoie au bot les nouvelles CVE High/Critical — dédup PARTAGÉ côté serveur (base)
-  async function autoSendTelegram(list: Vuln[]) {
-    if (localStorage.getItem(TG_AUTO_KEY) !== "1") return
-    let sentSet = new Set<string>()
-    try { const r = await fetch("/api/telegram"); if (r.ok) { const d = await r.json(); sentSet = new Set<string>(d.sent || []) } } catch { /* ignore */ }
-    const candidates = list
-      .filter((v) => (v.severity === "critical" || v.severity === "high") && !sentSet.has(v.cveId))
-      .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
-      .slice(0, 20)
-    if (!candidates.length) return // aucune nouvelle -> aucun envoi
-    let ok = 0
-    for (const v of candidates) {
-      try {
-        const r = await fetch("/api/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ context: tgContext(v) }) })
-        const d = await r.json().catch(() => ({}))
-        if (r.ok && !d.skipped) { ok++; await new Promise((res) => setTimeout(res, 1200)) }
-      } catch { /* ignore */ }
-    }
-    if (ok) setTgInfo(`📤 ${ok} nouvelle(s) alerte(s) envoyée(s)`)
-  }
   // Triage PARTAGÉ (base Neon) — plus de localStorage, tous les analystes voient le même état
   const [triage, setTriage] = useState<Record<string, string>>({})
   useEffect(() => {
@@ -153,18 +110,17 @@ export default function DashboardPage() {
     try {
       const data = await loadCves(keyword)
       setVulns(data); setLastSync(new Date())
-      autoSendTelegram(data) // envoi auto au bot (si activé)
     }
     catch (e) { setError((e as Error).message) } // en cas d'échec : on garde les anciennes données
     finally { setLoading(false); setRefreshing(false) }
   }
   useEffect(() => { load() }, []) // 1er chargement seulement -> écran de chargement
-  // Boucle 60s si auto-refresh OU alertes Telegram auto sont activés (toujours en arrière-plan)
+  // Boucle 60s d'actualisation en arrière-plan (lecture base, instantané)
   useEffect(() => {
-    if (!auto && !tgAuto) return
+    if (!auto) return
     const id = setInterval(() => { load(search.trim(), true); loadAssets() }, 60000)
     return () => clearInterval(id)
-  }, [auto, tgAuto, search, loadAssets])
+  }, [auto, search, loadAssets])
   useEffect(() => {
     const id = setInterval(() => tick((t) => t + 1), 1000) // décompte vivant
     return () => clearInterval(id)
@@ -314,13 +270,10 @@ export default function DashboardPage() {
             <Button type="submit" disabled={refreshing}>{refreshing ? "…" : "Rechercher"}</Button>
             <Button type="button" variant="outline" onClick={() => { setSearch(""); load("", true) }}>Actualiser</Button>
             <Button type="button" variant={auto ? "default" : "outline"} onClick={() => setAuto((a) => !a)} title="Auto-actualisation 60s">{auto ? "⏸ Auto" : "▶ Auto"}</Button>
-            <Button type="button" variant={tgAuto ? "default" : "outline"} onClick={toggleTgAuto} title="Envoi auto des CVE High/Critical au bot Telegram (toutes les 60s)">
-              {tgAuto ? "🔔 Telegram ON" : "🔕 Telegram OFF"}
-            </Button>
           </div>
         </form>
       </div>
-      {tgAuto && <p className="mb-3 text-xs text-cyan-400">🔔 Alertes Telegram auto activées — les nouvelles CVE High/Critical partent au bot toutes les 60s (max 20/cycle, sans doublon). {tgInfo}</p>}
+      <p className="mb-3 text-xs text-cyan-400">🔔 Alertes Telegram <b>automatiques côté serveur</b> — le collecteur détecte et envoie les CVE Critical/High/KEV, même sans utilisateur connecté.</p>
 
       {/* Barre de fraîcheur */}
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
