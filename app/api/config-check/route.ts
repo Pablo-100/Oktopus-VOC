@@ -31,7 +31,6 @@ function fingerprint(value: string): string {
 /** Variables worth confirming after a deploy, and why each one matters. */
 const WATCHED: Array<{ key: string; why: string }> = [
   { key: "BETTER_AUTH_URL", why: "Origin session cookies are issued for. A localhost value on a deployment means nobody stays signed in." },
-  { key: "BETTER_AUTH_API_KEY", why: "Better Auth dashboard pairing. A stale value produces 'API key hash mismatch'." },
   { key: "BETTER_AUTH_SECRET", why: "Signs sessions. Changing it invalidates every existing session." },
   { key: "CREDENTIAL_ENCRYPTION_KEY", why: "Seals user-supplied provider keys. Missing means BYOK refuses to store anything." },
   { key: "DATABASE_URL", why: "Everything." },

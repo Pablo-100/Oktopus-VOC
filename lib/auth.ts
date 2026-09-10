@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth"
 import { emailOTP } from "better-auth/plugins"
 import { Pool } from "pg"
-import { dash } from "@better-auth/infra"
 import { sendOtpEmail, sendWelcomeEmail } from "@/lib/mailer"
 import { getAppUrl } from "@/lib/app-url"
 
@@ -148,7 +147,5 @@ export const auth = betterAuth({
         }
       },
     }),
-    // Dashboard hébergé Better Auth (@better-auth/infra)
-    dash(),
   ],
 })
