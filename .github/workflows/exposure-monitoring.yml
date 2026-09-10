@@ -1,0 +1,72 @@
+name: OCTUPUS Exposure Monitoring
+
+# Periodic Exposure Monitoring worker.
+#
+# This is NOT real-time monitoring. It periodically re-queries EASM providers
+# for their LATEST INDEXED observation of each monitored asset and records any
+# changes. Providers do not scan on demand.
+#
+# The platform scheduler runs far more often than any asset needs; the worker
+# itself decides which assets are actually due (next_run_at <= now) and
+# processes a bounded batch, so a frequent trigger is cheap.
+#
+# ── SETUP (same secrets as the CVE sync workflow) ──
+#   APP_URL      (variable or secret) e.g. https://your-app.vercel.app
+#   CRON_SECRET  (secret) — must match CRON_SECRET in your app env
+#
+# Monitoring is OPT-IN per asset: with no assets enabled this does nothing and
+# costs no provider quota.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 min (GitHub may delay by a few minutes)
+  workflow_dispatch: {} # manual trigger
+
+# Never let two monitoring runs overlap. The worker also claims assets
+# atomically in the database, so this is defence in depth rather than the
+# primary guarantee.
+concurrency:
+  group: exposure-monitoring
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run monitoring cycle
+        env:
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::error::APP_URL is not set. Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET is not set. It must match CRON_SECRET in your app environment."
+            exit 1
+          fi
+          # -f so a non-2xx (e.g. 401) fails the job loudly instead of passing silently.
+          curl -fsS -m 120 -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/exposure/monitoring/run"
+
+      # Delivery is a SEPARATE step on purpose: monitoring decides that
+      # something changed, the alert engine decides it is actionable, and only
+      # then does the outbox tell the SOC. Monitoring never calls Telegram.
+      #
+      # Runs even when monitoring failed — alerts raised by an earlier cycle or
+      # by a manual refresh still deserve delivery.
+      - name: Deliver pending SOC notifications
+        if: always()
+        env:
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL / CRON_SECRET missing."
+            exit 1
+          fi
+          curl -fsS -m 120 -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/exposure/notifications/run"

@@ -1,0 +1,1619 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-03T18:58:13.416Z",
+  "files": [
+    {
+      "id": "app/account/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 315,
+      "imports": [
+        "lib/auth-client.ts",
+        "lib/auth-errors.ts",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/button.tsx",
+        "components/ui/label.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/separator.tsx",
+        "components/telegram-qr.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/navigation",
+        "sonner"
+      ]
+    },
+    {
+      "id": "app/api/ai/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 59,
+      "imports": [
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/assets/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 48,
+      "imports": [
+        "lib/db.ts",
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/auth/[...all]/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 3,
+      "imports": [
+        "lib/auth.ts"
+      ],
+      "externals": [
+        "better-auth/next-js"
+      ]
+    },
+    {
+      "id": "app/api/cron/sync/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 24,
+      "imports": [
+        "lib/collector.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/cves/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 42,
+      "imports": [
+        "lib/db.ts",
+        "lib/api-auth.ts",
+        "lib/types.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/facets/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 38,
+      "imports": [
+        "lib/db.ts",
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/metrics/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 27,
+      "imports": [
+        "lib/db.ts",
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/nvd/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 30,
+      "imports": [
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/telegram/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 44,
+      "imports": [
+        "lib/db.ts",
+        "lib/api-auth.ts",
+        "lib/telegram.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/api/triage/route.ts",
+      "label": "route.ts",
+      "group": "app",
+      "kind": "api",
+      "loc": 40,
+      "imports": [
+        "lib/db.ts",
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "app/assets/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 154,
+      "imports": [
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/button.tsx",
+        "components/ui/badge.tsx",
+        "components/facet-picker.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/link",
+        "sonner"
+      ]
+    },
+    {
+      "id": "app/dashboard/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 514,
+      "imports": [
+        "lib/data.ts",
+        "lib/risk-engine.ts",
+        "lib/types.ts",
+        "components/ui/card.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/input.tsx",
+        "components/ui/button.tsx",
+        "components/ui/table.tsx",
+        "components/ui/switch.tsx",
+        "components/ui/label.tsx",
+        "lib/utils.ts",
+        "components/cve-detail-dialog.tsx"
+      ],
+      "externals": [
+        "react",
+        "recharts"
+      ]
+    },
+    {
+      "id": "app/forgot-password/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 81,
+      "imports": [
+        "lib/auth-client.ts",
+        "lib/auth-errors.ts",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/button.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/link",
+        "next/navigation",
+        "sonner"
+      ]
+    },
+    {
+      "id": "app/layout.tsx",
+      "label": "layout.tsx",
+      "group": "app",
+      "kind": "layout",
+      "loc": 56,
+      "imports": [
+        "components/theme-provider.tsx",
+        "components/navbar.tsx",
+        "components/footer.tsx",
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "next",
+        "next/font/google",
+        "@vercel/speed-insights/next",
+        "@vercel/analytics/next"
+      ]
+    },
+    {
+      "id": "app/login/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 83,
+      "imports": [
+        "lib/auth-client.ts",
+        "lib/auth-errors.ts",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/button.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/link",
+        "next/navigation"
+      ]
+    },
+    {
+      "id": "app/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 234,
+      "imports": [
+        "components/ui/card.tsx"
+      ],
+      "externals": [
+        "next/link",
+        "next/image",
+        "react",
+        "three"
+      ]
+    },
+    {
+      "id": "app/signup/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 79,
+      "imports": [
+        "lib/auth-client.ts",
+        "lib/auth-errors.ts",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/button.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/link",
+        "next/navigation"
+      ]
+    },
+    {
+      "id": "app/statistics/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 225,
+      "imports": [
+        "lib/data.ts",
+        "lib/types.ts",
+        "lib/cwe-info.ts",
+        "components/ui/card.tsx"
+      ],
+      "externals": [
+        "react",
+        "recharts"
+      ]
+    },
+    {
+      "id": "app/verify-email/page.tsx",
+      "label": "page.tsx",
+      "group": "app",
+      "kind": "page",
+      "loc": 124,
+      "imports": [
+        "lib/auth-client.ts",
+        "lib/auth-errors.ts",
+        "components/ui/card.tsx",
+        "components/ui/button.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/navigation",
+        "sonner"
+      ]
+    },
+    {
+      "id": "components/ai-analysis.tsx",
+      "label": "ai-analysis.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 73,
+      "imports": [
+        "components/ui/button.tsx",
+        "lib/threat.ts",
+        "lib/types.ts"
+      ],
+      "externals": [
+        "react"
+      ]
+    },
+    {
+      "id": "components/cve-detail-dialog.tsx",
+      "label": "cve-detail-dialog.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 235,
+      "imports": [
+        "components/ui/dialog.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/badge.tsx",
+        "lib/risk-engine.ts",
+        "lib/threat.ts",
+        "lib/types.ts",
+        "components/ai-analysis.tsx",
+        "components/threat-graph.tsx"
+      ],
+      "externals": [
+        "react",
+        "next/dynamic"
+      ]
+    },
+    {
+      "id": "components/facet-picker.tsx",
+      "label": "facet-picker.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 75,
+      "imports": [
+        "components/ui/input.tsx",
+        "components/ui/badge.tsx",
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react"
+      ]
+    },
+    {
+      "id": "components/footer.tsx",
+      "label": "footer.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 137,
+      "imports": [],
+      "externals": [
+        "next/link",
+        "next/image"
+      ]
+    },
+    {
+      "id": "components/navbar.tsx",
+      "label": "navbar.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 151,
+      "imports": [
+        "lib/utils.ts",
+        "components/ui/button.tsx",
+        "lib/auth-client.ts"
+      ],
+      "externals": [
+        "next/link",
+        "next/image",
+        "next/navigation",
+        "next-themes",
+        "react"
+      ]
+    },
+    {
+      "id": "components/telegram-qr.tsx",
+      "label": "telegram-qr.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 44,
+      "imports": [],
+      "externals": [
+        "react",
+        "qrcode"
+      ]
+    },
+    {
+      "id": "components/theme-provider.tsx",
+      "label": "theme-provider.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 72,
+      "imports": [],
+      "externals": [
+        "react",
+        "next-themes"
+      ]
+    },
+    {
+      "id": "components/threat-graph.tsx",
+      "label": "threat-graph.tsx",
+      "group": "components",
+      "kind": "component",
+      "loc": 58,
+      "imports": [
+        "lib/threat-map.ts",
+        "lib/threat.ts",
+        "lib/types.ts"
+      ],
+      "externals": [
+        "react",
+        "cytoscape"
+      ]
+    },
+    {
+      "id": "components/ui/badge.tsx",
+      "label": "badge.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 53,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "@base-ui/react/merge-props",
+        "@base-ui/react/use-render",
+        "class-variance-authority"
+      ]
+    },
+    {
+      "id": "components/ui/button.tsx",
+      "label": "button.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 59,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "@base-ui/react/button",
+        "class-variance-authority"
+      ]
+    },
+    {
+      "id": "components/ui/card.tsx",
+      "label": "card.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 104,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react"
+      ]
+    },
+    {
+      "id": "components/ui/dialog.tsx",
+      "label": "dialog.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 161,
+      "imports": [
+        "lib/utils.ts",
+        "components/ui/button.tsx"
+      ],
+      "externals": [
+        "react",
+        "@base-ui/react/dialog",
+        "@hugeicons/react",
+        "@hugeicons/core-free-icons"
+      ]
+    },
+    {
+      "id": "components/ui/input.tsx",
+      "label": "input.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 21,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react",
+        "@base-ui/react/input"
+      ]
+    },
+    {
+      "id": "components/ui/label.tsx",
+      "label": "label.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 21,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react"
+      ]
+    },
+    {
+      "id": "components/ui/scroll-area.tsx",
+      "label": "scroll-area.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 56,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react",
+        "@base-ui/react/scroll-area"
+      ]
+    },
+    {
+      "id": "components/ui/select.tsx",
+      "label": "select.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 201,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react",
+        "@base-ui/react/select",
+        "@hugeicons/react",
+        "@hugeicons/core-free-icons"
+      ]
+    },
+    {
+      "id": "components/ui/separator.tsx",
+      "label": "separator.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 26,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "@base-ui/react/separator"
+      ]
+    },
+    {
+      "id": "components/ui/sonner.tsx",
+      "label": "sonner.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 51,
+      "imports": [],
+      "externals": [
+        "next-themes",
+        "sonner",
+        "@hugeicons/react",
+        "@hugeicons/core-free-icons"
+      ]
+    },
+    {
+      "id": "components/ui/switch.tsx",
+      "label": "switch.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 33,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "@base-ui/react/switch"
+      ]
+    },
+    {
+      "id": "components/ui/table.tsx",
+      "label": "table.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 117,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "react"
+      ]
+    },
+    {
+      "id": "components/ui/tabs.tsx",
+      "label": "tabs.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 83,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "@base-ui/react/tabs",
+        "class-variance-authority"
+      ]
+    },
+    {
+      "id": "components/ui/tooltip.tsx",
+      "label": "tooltip.tsx",
+      "group": "components",
+      "kind": "ui",
+      "loc": 67,
+      "imports": [
+        "lib/utils.ts"
+      ],
+      "externals": [
+        "@base-ui/react/tooltip"
+      ]
+    },
+    {
+      "id": "lib/api-auth.ts",
+      "label": "api-auth.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 17,
+      "imports": [
+        "lib/auth.ts"
+      ],
+      "externals": [
+        "next/server"
+      ]
+    },
+    {
+      "id": "lib/auth-client.ts",
+      "label": "auth-client.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 15,
+      "imports": [],
+      "externals": [
+        "better-auth/react",
+        "better-auth/client/plugins",
+        "@better-auth/infra/client"
+      ]
+    },
+    {
+      "id": "lib/auth-errors.ts",
+      "label": "auth-errors.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 42,
+      "imports": [],
+      "externals": []
+    },
+    {
+      "id": "lib/auth.ts",
+      "label": "auth.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 155,
+      "imports": [
+        "lib/mailer.ts"
+      ],
+      "externals": [
+        "better-auth",
+        "better-auth/plugins",
+        "pg",
+        "@better-auth/infra"
+      ]
+    },
+    {
+      "id": "lib/codegraph-types.ts",
+      "label": "codegraph-types.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 60,
+      "imports": [],
+      "externals": []
+    },
+    {
+      "id": "lib/collector.ts",
+      "label": "collector.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 201,
+      "imports": [
+        "lib/db.ts",
+        "lib/data.ts",
+        "lib/risk-engine.ts",
+        "lib/telegram.ts",
+        "lib/types.ts"
+      ],
+      "externals": []
+    },
+    {
+      "id": "lib/cwe-info.ts",
+      "label": "cwe-info.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 60,
+      "imports": [],
+      "externals": []
+    },
+    {
+      "id": "lib/data.ts",
+      "label": "data.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 185,
+      "imports": [
+        "lib/types.ts",
+        "lib/risk-engine.ts"
+      ],
+      "externals": []
+    },
+    {
+      "id": "lib/db.ts",
+      "label": "db.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 69,
+      "imports": [],
+      "externals": [
+        "@neondatabase/serverless"
+      ]
+    },
+    {
+      "id": "lib/mailer.ts",
+      "label": "mailer.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 129,
+      "imports": [],
+      "externals": [
+        "nodemailer",
+        "resend"
+      ]
+    },
+    {
+      "id": "lib/risk-engine.ts",
+      "label": "risk-engine.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 51,
+      "imports": [
+        "lib/types.ts"
+      ],
+      "externals": []
+    },
+    {
+      "id": "lib/telegram.ts",
+      "label": "telegram.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 115,
+      "imports": [
+        "lib/types.ts",
+        "lib/threat-map.ts"
+      ],
+      "externals": []
+    },
+    {
+      "id": "lib/threat-map.ts",
+      "label": "threat-map.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 48,
+      "imports": [],
+      "externals": []
+    },
+    {
+      "id": "lib/threat.ts",
+      "label": "threat.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 50,
+      "imports": [
+        "lib/threat-map.ts",
+        "lib/cwe-info.ts",
+        "lib/types.ts"
+      ],
+      "externals": []
+    },
+    {
+      "id": "lib/types.ts",
+      "label": "types.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 37,
+      "imports": [],
+      "externals": []
+    },
+    {
+      "id": "lib/utils.ts",
+      "label": "utils.ts",
+      "group": "lib",
+      "kind": "lib",
+      "loc": 7,
+      "imports": [],
+      "externals": [
+        "clsx",
+        "tailwind-merge"
+      ]
+    },
+    {
+      "id": "next.config.ts",
+      "label": "next.config.ts",
+      "group": "root",
+      "kind": "config",
+      "loc": 6,
+      "imports": [],
+      "externals": [
+        "next"
+      ]
+    },
+    {
+      "id": "proxy.ts",
+      "label": "proxy.ts",
+      "group": "root",
+      "kind": "config",
+      "loc": 20,
+      "imports": [],
+      "externals": [
+        "next/server",
+        "better-auth/cookies"
+      ]
+    },
+    {
+      "id": "scripts/codegraph.ts",
+      "label": "codegraph.ts",
+      "group": "scripts",
+      "kind": "script",
+      "loc": 209,
+      "imports": [
+        "lib/codegraph-types.ts"
+      ],
+      "externals": [
+        "typescript",
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
+      "id": "scripts/seed-cves.ts",
+      "label": "seed-cves.ts",
+      "group": "scripts",
+      "kind": "script",
+      "loc": 18,
+      "imports": [
+        "lib/collector.ts"
+      ],
+      "externals": [
+        "fs"
+      ]
+    },
+    {
+      "id": "tests/auth.test.ts",
+      "label": "auth.test.ts",
+      "group": "root",
+      "kind": "config",
+      "loc": 122,
+      "imports": [
+        "lib/auth.ts",
+        "lib/api-auth.ts"
+      ],
+      "externals": [
+        "bun:test",
+        "fs",
+        "pg"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/telegram-qr.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/ui/badge.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/ui/label.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "components/ui/separator.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "lib/auth-client.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/account/page.tsx",
+      "target": "lib/auth-errors.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/ai/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/assets/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/assets/route.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/auth/[...all]/route.ts",
+      "target": "lib/auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/cron/sync/route.ts",
+      "target": "lib/collector.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/cves/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/cves/route.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/cves/route.ts",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/facets/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/facets/route.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/metrics/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/metrics/route.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/nvd/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/telegram/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/telegram/route.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/telegram/route.ts",
+      "target": "lib/telegram.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/triage/route.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/api/triage/route.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/assets/page.tsx",
+      "target": "components/facet-picker.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/assets/page.tsx",
+      "target": "components/ui/badge.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/assets/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/assets/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/assets/page.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/cve-detail-dialog.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/badge.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/label.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/switch.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "components/ui/table.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "lib/data.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "lib/risk-engine.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/forgot-password/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/forgot-password/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/forgot-password/page.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/forgot-password/page.tsx",
+      "target": "lib/auth-client.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/forgot-password/page.tsx",
+      "target": "lib/auth-errors.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/layout.tsx",
+      "target": "components/footer.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/layout.tsx",
+      "target": "components/navbar.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/layout.tsx",
+      "target": "components/theme-provider.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/layout.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/login/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/login/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/login/page.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/login/page.tsx",
+      "target": "lib/auth-client.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/login/page.tsx",
+      "target": "lib/auth-errors.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/signup/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/signup/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/signup/page.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/signup/page.tsx",
+      "target": "lib/auth-client.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/signup/page.tsx",
+      "target": "lib/auth-errors.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/statistics/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/statistics/page.tsx",
+      "target": "lib/cwe-info.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/statistics/page.tsx",
+      "target": "lib/data.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/statistics/page.tsx",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/verify-email/page.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/verify-email/page.tsx",
+      "target": "components/ui/card.tsx",
+      "weight": 1
+    },
+    {
+      "source": "app/verify-email/page.tsx",
+      "target": "lib/auth-client.ts",
+      "weight": 1
+    },
+    {
+      "source": "app/verify-email/page.tsx",
+      "target": "lib/auth-errors.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ai-analysis.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/ai-analysis.tsx",
+      "target": "lib/threat.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ai-analysis.tsx",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "components/ai-analysis.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "components/threat-graph.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "components/ui/badge.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "components/ui/dialog.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "components/ui/tabs.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "lib/risk-engine.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "lib/threat.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/cve-detail-dialog.tsx",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/facet-picker.tsx",
+      "target": "components/ui/badge.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/facet-picker.tsx",
+      "target": "components/ui/input.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/facet-picker.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/navbar.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/navbar.tsx",
+      "target": "lib/auth-client.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/navbar.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/threat-graph.tsx",
+      "target": "lib/threat-map.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/threat-graph.tsx",
+      "target": "lib/threat.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/threat-graph.tsx",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/badge.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/button.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/card.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/dialog.tsx",
+      "target": "components/ui/button.tsx",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/dialog.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/input.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/label.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/scroll-area.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/select.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/separator.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/switch.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/table.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/tabs.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "components/ui/tooltip.tsx",
+      "target": "lib/utils.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/api-auth.ts",
+      "target": "lib/auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/auth.ts",
+      "target": "lib/mailer.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/collector.ts",
+      "target": "lib/data.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/collector.ts",
+      "target": "lib/db.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/collector.ts",
+      "target": "lib/risk-engine.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/collector.ts",
+      "target": "lib/telegram.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/collector.ts",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/data.ts",
+      "target": "lib/risk-engine.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/data.ts",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/risk-engine.ts",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/telegram.ts",
+      "target": "lib/threat-map.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/telegram.ts",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/threat.ts",
+      "target": "lib/cwe-info.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/threat.ts",
+      "target": "lib/threat-map.ts",
+      "weight": 1
+    },
+    {
+      "source": "lib/threat.ts",
+      "target": "lib/types.ts",
+      "weight": 1
+    },
+    {
+      "source": "scripts/codegraph.ts",
+      "target": "lib/codegraph-types.ts",
+      "weight": 1
+    },
+    {
+      "source": "scripts/seed-cves.ts",
+      "target": "lib/collector.ts",
+      "weight": 1
+    },
+    {
+      "source": "tests/auth.test.ts",
+      "target": "lib/api-auth.ts",
+      "weight": 1
+    },
+    {
+      "source": "tests/auth.test.ts",
+      "target": "lib/auth.ts",
+      "weight": 1
+    }
+  ],
+  "summary": {
+    "files": 63,
+    "edges": 125,
+    "byGroup": {
+      "app": 20,
+      "components": 22,
+      "lib": 16,
+      "scripts": 2,
+      "root": 3
+    },
+    "byKind": {
+      "page": 9,
+      "api": 10,
+      "layout": 1,
+      "component": 8,
+      "ui": 14,
+      "lib": 16,
+      "config": 3,
+      "script": 2
+    },
+    "topExternals": [
+      {
+        "name": "react",
+        "count": 23
+      },
+      {
+        "name": "next/server",
+        "count": 11
+      },
+      {
+        "name": "next/link",
+        "count": 7
+      },
+      {
+        "name": "next/navigation",
+        "count": 6
+      },
+      {
+        "name": "sonner",
+        "count": 5
+      },
+      {
+        "name": "next/image",
+        "count": 3
+      },
+      {
+        "name": "next-themes",
+        "count": 3
+      },
+      {
+        "name": "class-variance-authority",
+        "count": 3
+      },
+      {
+        "name": "@hugeicons/react",
+        "count": 3
+      },
+      {
+        "name": "@hugeicons/core-free-icons",
+        "count": 3
+      },
+      {
+        "name": "recharts",
+        "count": 2
+      },
+      {
+        "name": "next",
+        "count": 2
+      },
+      {
+        "name": "pg",
+        "count": 2
+      },
+      {
+        "name": "fs",
+        "count": 2
+      },
+      {
+        "name": "better-auth/next-js",
+        "count": 1
+      }
+    ]
+  }
+}

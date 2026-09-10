@@ -42,31 +42,31 @@ function LoginForm() {
 
   return (
     <Card className="glass p-6">
-      <h1 className="mb-1 text-2xl font-bold">Connexion</h1>
-      <p className="mb-5 text-sm text-muted-foreground">Accède à ton poste de commande OCTUPUS</p>
+      <h1 className="mb-1 text-2xl font-bold">Sign in</h1>
+      <p className="mb-5 text-sm text-muted-foreground">Access your OCTUPUS command post</p>
 
-      {justVerified && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">✅ Email vérifié — connecte-toi pour accéder à ton espace.</p>}
-      {justReset && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">✅ Mot de passe réinitialisé — connecte-toi avec ton nouveau mot de passe.</p>}
+      {justVerified && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">✅ Email verified — sign in to access your workspace.</p>}
+      {justReset && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">✅ Password reset — sign in with your new password.</p>}
 
       <div className="grid gap-2">
         <Button variant="outline" disabled={!!social} onClick={() => withProvider("github")}>
-          {social === "github" ? "Redirection…" : "Continuer avec GitHub"}
+          {social === "github" ? "Redirecting…" : "Continue with GitHub"}
         </Button>
         <Button variant="outline" disabled={!!social} onClick={() => withProvider("google")}>
-          {social === "google" ? "Redirection…" : "Continuer avec Google"}
+          {social === "google" ? "Redirecting…" : "Continue with Google"}
         </Button>
       </div>
-      <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" /></div>
+      <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" /></div>
 
       <form onSubmit={submit} className="grid gap-3">
         <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-        <Input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+        <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         {shownError && <p className="text-sm text-red-400">⚠️ {shownError}</p>}
-        <Button type="submit" disabled={loading}>{loading ? "Connexion…" : "Se connecter"}</Button>
-        <Link href="/forgot-password" className="text-center text-xs text-muted-foreground underline hover:text-foreground">Mot de passe oublié ?</Link>
+        <Button type="submit" disabled={loading}>{loading ? "Signing in…" : "Sign in"}</Button>
+        <Link href="/forgot-password" className="text-center text-xs text-muted-foreground underline hover:text-foreground">Forgot your password?</Link>
       </form>
 
-      <p className="mt-4 text-sm text-muted-foreground">Pas de compte ? <Link href="/signup" className="text-cyan-400 underline">S&apos;inscrire</Link></p>
+      <p className="mt-4 text-sm text-muted-foreground">No account? <Link href="/signup" className="text-cyan-400 underline">Sign up</Link></p>
     </Card>
   )
 }
@@ -74,7 +74,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-[82vh] max-w-md flex-col justify-center px-4">
-      <Suspense fallback={<Card className="glass p-6 text-muted-foreground">Chargement…</Card>}>
+      <Suspense fallback={<Card className="glass p-6 text-muted-foreground">Loading…</Card>}>
         <LoginForm />
       </Suspense>
     </main>

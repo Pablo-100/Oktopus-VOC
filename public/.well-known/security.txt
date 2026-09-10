@@ -1,0 +1,11 @@
+Contact: mailto:mustaphaamintbini@gmail.com
+Contact: https://www.linkedin.com/in/mustapha-amin-tbini/
+Expires: 2027-08-22T00:00:00.000Z
+Preferred-Languages: en, fr
+Canonical: https://octupus-voc.vercel.app/.well-known/security.txt
+Policy: https://octupus-voc.vercel.app/terms
+
+# If you find a security vulnerability in OCTUPUS-VOC itself (not in the
+# third-party CVE/0-day data we aggregate), please report it privately to the
+# contact above before any public disclosure. We aim to acknowledge reports
+# within 5 business days.

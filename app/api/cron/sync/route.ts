@@ -7,17 +7,41 @@ export const dynamic = "force-dynamic"
 
 /**
  * Endpoint de synchronisation, appelé par le planificateur (Vercel Cron / GitHub Actions).
- * Sécurisé par CRON_SECRET : header `Authorization: Bearer <secret>` OU `?token=<secret>`.
+ * Sécurisé par CRON_SECRET : header `Authorization: Bearer <secret>` UNIQUEMENT.
+ * FAIL-CLOSED : si CRON_SECRET n'est pas défini -> 503, jamais d'accès ouvert.
+ * Le `?token=` a été retiré (fuitait le secret dans les logs/proxies).
+ * N'exécute QUE syncCves(). Le sync 0-day a sa propre route (/api/cron/zero-days)
+ * et donc son propre budget de 60 s : quand les deux partageaient cette
+ * invocation, syncCves() consommait toute l'allocation et syncZeroDays()
+ * n'était jamais atteint — la fonction était tuée sans lever d'erreur, donc
+ * rien n'était journalisé et les données 0-day ont gelé silencieusement.
  */
-function authorized(req: Request): boolean {
+export function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET
-  if (!secret) return true // non défini (dev) -> autorisé. EN PROD : définir CRON_SECRET.
-  if (req.headers.get("authorization") === `Bearer ${secret}`) return true
-  return new URL(req.url).searchParams.get("token") === secret
+  if (!secret) return false // fail-closed : pas de secret configuré -> refus
+  const provided = req.headers.get("authorization")
+  if (!provided || !provided.startsWith("Bearer ")) return false
+  // Comparaison à temps constant (évite les fuites par timing)
+  const given = provided.slice("Bearer ".length)
+  if (given.length !== secret.length) return false
+  let diff = 0
+  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ secret.charCodeAt(i)
+  return diff === 0
 }
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
-  const result = await syncCves()
-  return NextResponse.json(result, { status: result.ok ? 200 : 500 })
+  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const cveResult = await syncCves()
+  return NextResponse.json({ cve: cveResult }, { status: cveResult.ok ? 200 : 500 })
+}
+
+/**
+ * Scheduler services differ on which verb they use to "trigger" a job, and the
+ * choice is a dropdown the operator can change without touching this code. A
+ * verb mismatch answers 405 — which no dashboard reads as an outage, so the CVE
+ * feed would silently freeze while every health indicator stayed green. Both
+ * verbs do the same thing so the schedule cannot be misconfigured into silence.
+ */
+export async function POST(req: Request) {
+  return GET(req)
 }

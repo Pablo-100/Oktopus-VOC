@@ -12,17 +12,12 @@ import {
 
 const GRID = "rgba(148,163,184,0.15)"
 const AXIS = "#93a1bd"
-// Palette sévérité (ordinale), avec libellés FR — identité jamais par la couleur seule (légende + labels)
+// Severity palette (ordinal) — identity is never by color alone (legend + labels)
 const SEV = [
-  { key: "critical", label: "Critique", color: "#e11d48" },
-  { key: "high", label: "Élevée", color: "#f97316" },
-  { key: "medium", label: "Moyenne", color: "#eab308" },
-  { key: "low", label: "Faible", color: "#22c55e" },
-]
-const IMPACT = [
-  { label: "Aucun", color: "#475569" },
-  { label: "Faible", color: "#eab308" },
-  { label: "Élevé", color: "#e11d48" },
+  { key: "critical", label: "Critical", color: "#e11d48" },
+  { key: "high", label: "High", color: "#f97316" },
+  { key: "medium", label: "Medium", color: "#eab308" },
+  { key: "low", label: "Low", color: "#22c55e" },
 ]
 const legendStyle = { fontSize: 12, color: "#93a1bd" }
 const TT: ComponentProps<typeof Tooltip> = {
@@ -88,7 +83,7 @@ export default function StatisticsPage() {
     }
   }, [vulns])
 
-  // CVE par année (NVD totalResults, mis en cache 24h)
+  // CVE par année (agrégé côté serveur via /api/cve-counts, mis en cache 24h)
   const [byYear, setByYear] = useState<{ year: string; n: number }[]>([])
   useEffect(() => {
     const KEY = "octopus.cveByYear"
@@ -98,41 +93,37 @@ export default function StatisticsPage() {
     } catch { /* ignore */ }
     let cancelled = false
     ;(async () => {
-      const nowY = new Date().getFullYear()
-      const out: { year: string; n: number }[] = []
-      for (let y = nowY - 7; y <= nowY; y++) {
-        try {
-          const p = new URLSearchParams({ pubStartDate: `${y}-01-01T00:00:00.000`, pubEndDate: `${y}-12-31T23:59:59.999`, resultsPerPage: "1" })
-          const r = await fetch(`/api/nvd?${p.toString()}`)
-          if (r.ok) { const j = await r.json(); out.push({ year: String(y), n: j.totalResults || 0 }) }
-        } catch { /* ignore */ }
-        await new Promise((res) => setTimeout(res, 1500)) // proxy + clé -> plus rapide
-      }
-      if (!cancelled && out.length) {
-        setByYear(out)
-        try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), data: out })) } catch { /* ignore */ }
-      }
+      try {
+        const r = await fetch(`/api/cve-counts?years=8`)
+        if (r.ok) {
+          const j = await r.json()
+          if (!cancelled && Array.isArray(j.years) && j.years.length) {
+            setByYear(j.years)
+            try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), data: j.years })) } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore */ }
     })()
     return () => { cancelled = true }
   }, [])
 
-  if (loading) return <main className="mx-auto max-w-6xl px-4 py-16 text-center text-muted-foreground">Chargement des statistiques…</main>
+  if (loading) return <main className="mx-auto max-w-6xl px-4 py-16 text-center text-muted-foreground">Loading statistics…</main>
   if (error) return <main className="mx-auto max-w-6xl px-4 py-16"><Card className="border-red-500/50 bg-red-500/10 p-4">⚠️ {error}</Card></main>
 
   return (
     <main className="mx-auto max-w-[1600px] px-6 py-8">
-      <h1 className="text-3xl font-bold tracking-tight">Statistiques</h1>
-      <p className="mb-6 text-muted-foreground">Analytics sur le lot de CVE chargé (fenêtre récente NVD).</p>
+      <h1 className="text-3xl font-bold tracking-tight">Statistics</h1>
+      <p className="mb-6 text-muted-foreground">Analytics on the loaded CVE batch (recent NVD window).</p>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card className="glass p-4"><div className="text-xs uppercase text-muted-foreground">Total CVE</div><div className="text-3xl font-bold">{agg.total}</div></Card>
-        <Card className="bg-zinc-900 p-4 text-white"><div className="text-xs uppercase opacity-80">Critiques</div><div className="text-3xl font-bold">{agg.critical}</div></Card>
-        <Card className="glass p-4"><div className="text-xs uppercase text-muted-foreground">CVSS moyen</div><div className="text-3xl font-bold">{agg.avg}</div></Card>
+        <Card className="glass p-4"><div className="text-xs uppercase text-muted-foreground">Total CVEs</div><div className="text-3xl font-bold">{agg.total}</div></Card>
+        <Card className="bg-zinc-900 p-4 text-white"><div className="text-xs uppercase opacity-80">Critical</div><div className="text-3xl font-bold">{agg.critical}</div></Card>
+        <Card className="glass p-4"><div className="text-xs uppercase text-muted-foreground">Average CVSS</div><div className="text-3xl font-bold">{agg.avg}</div></Card>
         <Card className="glass p-4"><div className="text-xs uppercase text-muted-foreground">🔴 KEV</div><div className="text-3xl font-bold">{agg.kev}</div></Card>
       </div>
 
       <div className="mb-4">
-        <ChartCard title="CVE publiées par jour" subtitle="Volume quotidien sur la fenêtre chargée — survole un point pour le détail">
+        <ChartCard title="CVEs published per day" subtitle="Daily volume over the loaded window — hover a point for detail">
           <LineChart data={agg.days} margin={{ top: 10, right: 20, left: -12, bottom: 0 }}>
             <CartesianGrid stroke={GRID} vertical={false} />
             <XAxis dataKey="day" fontSize={11} stroke={AXIS} tickLine={false} />
@@ -144,7 +135,7 @@ export default function StatisticsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Répartition par sévérité" subtitle="Part de chaque niveau de gravité — % sur les tranches, total au survol">
+        <ChartCard title="Breakdown by severity" subtitle="Share of each severity level — % on slices, total on hover">
           <PieChart>
             <Pie data={agg.sevData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={118} paddingAngle={2}
                  label={({ percent }) => ((percent ?? 0) > 0.03 ? `${((percent ?? 0) * 100).toFixed(0)}%` : "")} labelLine={false}>
@@ -154,7 +145,7 @@ export default function StatisticsPage() {
             <Tooltip {...TT} />
           </PieChart>
         </ChartCard>
-        <ChartCard title="Distribution des scores CVSS" subtitle="Nombre de CVE par tranche de score technique (0 → 10)">
+        <ChartCard title="CVSS score distribution" subtitle="Number of CVEs per technical score band (0 → 10)">
           <BarChart data={agg.cvss} margin={{ top: 18, right: 10, left: -12, bottom: 0 }}>
             <CartesianGrid stroke={GRID} vertical={false} />
             <XAxis dataKey="band" fontSize={11} stroke={AXIS} tickLine={false} />
@@ -163,7 +154,7 @@ export default function StatisticsPage() {
             <Bar dataKey="n" fill="#8b5cf6" radius={[4, 4, 0, 0]}><LabelList dataKey="n" position="top" fontSize={10} fill={AXIS} /></Bar>
           </BarChart>
         </ChartCard>
-        <ChartCard title="Distribution EPSS" subtitle="Probabilité d'exploitation à 30 j, par tranche de %">
+        <ChartCard title="EPSS distribution" subtitle="30-day exploitation probability, by % band">
           <BarChart data={agg.epss} margin={{ top: 18, right: 10, left: -12, bottom: 0 }}>
             <CartesianGrid stroke={GRID} vertical={false} />
             <XAxis dataKey="band" fontSize={11} stroke={AXIS} tickLine={false} />
@@ -172,7 +163,7 @@ export default function StatisticsPage() {
             <Bar dataKey="n" fill="#22c55e" radius={[4, 4, 0, 0]}><LabelList dataKey="n" position="top" fontSize={10} fill={AXIS} /></Bar>
           </BarChart>
         </ChartCard>
-        <ChartCard title="Top 10 faiblesses (CWE)" subtitle="Types de vulnérabilité les plus fréquents (nom au survol)" tall>
+        <ChartCard title="Top 10 weaknesses (CWE)" subtitle="Most frequent vulnerability types (name on hover)" tall>
           <BarChart data={agg.topCwe} layout="vertical" margin={{ left: 8, right: 34, top: 4, bottom: 4 }}>
             <CartesianGrid stroke={GRID} horizontal={false} />
             <XAxis type="number" allowDecimals={false} fontSize={11} stroke={AXIS} tickLine={false} axisLine={false} />
@@ -181,7 +172,7 @@ export default function StatisticsPage() {
             <Bar dataKey="n" fill="#fb7185" radius={[0, 4, 4, 0]}><LabelList dataKey="n" position="right" fontSize={10} fill={AXIS} /></Bar>
           </BarChart>
         </ChartCard>
-        <ChartCard title="Top 10 éditeurs" subtitle="Éditeurs les plus touchés (CPE)">
+        <ChartCard title="Top 10 vendors" subtitle="Most affected vendors (CPE)">
           <BarChart data={agg.topVendor} layout="vertical" margin={{ left: 8, right: 34, top: 4, bottom: 4 }}>
             <CartesianGrid stroke={GRID} horizontal={false} />
             <XAxis type="number" allowDecimals={false} fontSize={11} stroke={AXIS} tickLine={false} axisLine={false} />
@@ -190,7 +181,7 @@ export default function StatisticsPage() {
             <Bar dataKey="n" fill="#8b5cf6" radius={[0, 4, 4, 0]}><LabelList dataKey="n" position="right" fontSize={10} fill={AXIS} /></Bar>
           </BarChart>
         </ChartCard>
-        <ChartCard title="Top 10 produits" subtitle="Produits les plus touchés (CPE)">
+        <ChartCard title="Top 10 products" subtitle="Most affected products (CPE)">
           <BarChart data={agg.topProduct} layout="vertical" margin={{ left: 8, right: 34, top: 4, bottom: 4 }}>
             <CartesianGrid stroke={GRID} horizontal={false} />
             <XAxis type="number" allowDecimals={false} fontSize={11} stroke={AXIS} tickLine={false} axisLine={false} />
@@ -200,8 +191,8 @@ export default function StatisticsPage() {
           </BarChart>
         </ChartCard>
         <Card className="glass p-5">
-          <h3 className="font-semibold">CVE par année (NVD)</h3>
-          <p className="mb-3 text-xs text-muted-foreground">Total publié par an (source NVD, mis en cache 24 h)</p>
+          <h3 className="font-semibold">CVEs per year (NVD)</h3>
+          <p className="mb-3 text-xs text-muted-foreground">Total published per year (NVD source, cached 24h)</p>
           <div className="h-80">
             {byYear.length ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -214,7 +205,7 @@ export default function StatisticsPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">Chargement des totaux annuels… (~40 s, mis en cache 24 h)</div>
+              <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">Loading yearly totals… (~40s, cached 24h)</div>
             )}
           </div>
         </Card>

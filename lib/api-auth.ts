@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth"
 export async function requireUser(req: Request) {
   const session = await auth.api.getSession({ headers: req.headers })
   if (!session?.user) {
-    return { user: null, deny: NextResponse.json({ error: "Authentification requise" }, { status: 401 }) }
+    return { user: null, deny: NextResponse.json({ error: "Authentication required" }, { status: 401 }) }
   }
   return { user: session.user, deny: null as null }
 }

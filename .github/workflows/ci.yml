@@ -1,0 +1,71 @@
+name: CI
+
+# Vérifie chaque push/PR : typecheck, lint, tests, build.
+#
+# TEST_DATABASE_URL n'est PAS optionnel en pratique. Les suites adossées à la
+# base refusent de s'exécuter sans elle — elles écrivent de vraies lignes, et
+# se rabattre sur DATABASE_URL viserait la base de PRODUCTION. Sans ce secret
+# elles sont donc ignorées, et la vérification perd (mesuré) :
+#
+#     avec le secret    : 1644 assertions
+#     sans le secret    : 1191 assertions   -> 453 jamais exécutées (28 %)
+#
+# Ce qui disparaît est précisément ce qui protège les utilisateurs : isolation
+# entre locataires, cycle de vie des alertes, file de notifications, propriété
+# des domaines. Utiliser une branche Neon dédiée, JAMAIS la base de prod.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Fournie -> les suites base réelle s'exécutent. Absente -> elles sont
+      # ignorées et l'étape ci-dessous le signale bruyamment.
+      TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      # Quelques variables requises par better-auth au chargement des modules.
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Installer les dépendances
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck (tsc --noEmit)
+        run: bun run typecheck
+
+      - name: Lint (eslint)
+        run: bun run lint
+
+      # Un secret manquant réduisait la couverture de 28 % sans que rien ne
+      # l'indique : le job restait vert. Il est désormais annoncé dans le
+      # résumé du run.
+      - name: Vérifier la présence d'une base de test
+        run: |
+          if [ -z "$TEST_DATABASE_URL" ]; then
+            echo "::warning title=Couverture réduite::TEST_DATABASE_URL absent — les suites base réelle sont ignorées (~453 assertions non exécutées, dont l'isolation entre locataires)."
+            echo "### ⚠️ Couverture réduite" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`TEST_DATABASE_URL\` n'est pas configuré : les suites adossées à la base sont ignorées." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Base de test configurée — suite complète."
+          fi
+
+      # `bun run test`, not `bun test`: the script carries --timeout, and the
+      # bunfig setting alone was not being honoured — a suite of remote-database
+      # round trips intermittently tripped the 5s default and reported latency
+      # as a logic failure.
+      - name: Tests (bun test)
+        run: bun run test
+
+      - name: Build (next build)
+        run: bun run build
+        env:
+          NODE_ENV: production

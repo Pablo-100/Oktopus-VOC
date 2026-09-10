@@ -10,44 +10,22 @@ import { sql, initDb } from "@/lib/db"
 import { processNvd, fetchEpss } from "@/lib/data"
 import { computeRiskScore, riskLevel } from "@/lib/risk-engine"
 import { sendTelegram, ctxFromVuln } from "@/lib/telegram"
+import { fetchJson } from "@/lib/fetch-json"
+import { loadKevServer } from "@/lib/kev-cache"
 import type { Vuln } from "@/lib/types"
 
+// Ré-exports pour compat (zero-day-collector.ts, scripts/backfill-cves.ts) :
+// l'implémentation vit désormais dans lib/fetch-json.ts + lib/kev-cache.ts.
+export { fetchJson } from "@/lib/fetch-json"
+export { loadKevFull, loadKevServer } from "@/lib/kev-cache"
+
 const NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-const KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 const PER_PAGE = 2000
 const BOOTSTRAP_DAYS = 7 // 1er run : profondeur de la fenêtre initiale
 const OVERLAP_MIN = 30 // chevauchement pour ne rien rater entre 2 runs
 const MAX_ALERTS_PER_RUN = 20
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-/** fetch JSON avec retry (429 / 5xx) + backoff. */
-async function fetchJson(url: string, headers: Record<string, string> = {}, retries = 4): Promise<Record<string, unknown>> {
-  let lastErr: unknown
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, { headers })
-      if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return (await res.json()) as Record<string, unknown>
-    } catch (e) {
-      lastErr = e
-      if (attempt < retries) await sleep(1500 * (attempt + 1)) // backoff linéaire
-    }
-  }
-  throw lastErr
-}
-
-/** Catalogue CISA KEV (live). */
-async function loadKevServer(): Promise<Set<string>> {
-  try {
-    const j = await fetchJson(KEV_URL)
-    const items = (j.vulnerabilities ?? []) as Array<{ cveID?: string }>
-    return new Set(items.map((v) => String(v.cveID).toUpperCase()))
-  } catch {
-    return new Set()
-  }
-}
 
 /** Récupère les CVE d'une fenêtre NVD (paginé). `base` = params de fenêtre (pub* ou lastMod*). */
 async function fetchNvdWindow(base: Record<string, string>): Promise<unknown[]> {
@@ -71,7 +49,7 @@ async function fetchNvdWindow(base: Record<string, string>): Promise<unknown[]> 
 }
 
 /** Enrichit les CVE (EPSS + KEV + Risk Score RBVM). */
-async function enrichServer(vulns: Vuln[]): Promise<void> {
+export async function enrichServer(vulns: Vuln[]): Promise<void> {
   const [kev, epssMap] = await Promise.all([loadKevServer(), fetchEpss(vulns.map((v) => v.cveId))])
   for (const v of vulns) {
     const key = v.cveId.toUpperCase()
@@ -89,7 +67,7 @@ async function enrichServer(vulns: Vuln[]): Promise<void> {
 }
 
 /** Upsert par lots (transactions Neon) pour limiter les allers-retours. */
-async function batchUpsert(vulns: Vuln[]): Promise<void> {
+export async function batchUpsert(vulns: Vuln[], importedBy?: string | null): Promise<void> {
   const CHUNK = 100
   for (let i = 0; i < vulns.length; i += CHUNK) {
     const chunk = vulns.slice(i, i + CHUNK)
@@ -97,13 +75,14 @@ async function batchUpsert(vulns: Vuln[]): Promise<void> {
       const bestCvss = v.cvssV3 !== "-" ? Number(v.cvssV3) : v.cvssV2 !== "-" ? Number(v.cvssV2) : null
       const published = v.sortDate ? new Date(v.sortDate).toISOString() : null
       return sql`
-        INSERT INTO cves (cve_id, risk_score, severity, is_kev, has_exploit, epss, cvss, published, last_modified, data, synced_at)
-        VALUES (${v.cveId}, ${v.riskScore ?? 0}, ${v.severity}, ${v.isKev}, ${v.hasExploit}, ${v.epss}, ${bestCvss}, ${published}, ${v.lastModified}, ${JSON.stringify(v)}, now())
+        INSERT INTO cves (cve_id, risk_score, severity, is_kev, has_exploit, epss, cvss, published, last_modified, data, imported_by, synced_at)
+        VALUES (${v.cveId}, ${v.riskScore ?? 0}, ${v.severity}, ${v.isKev}, ${v.hasExploit}, ${v.epss}, ${bestCvss}, ${published}, ${v.lastModified}, ${JSON.stringify(v)}, ${importedBy ?? null}, now())
         ON CONFLICT (cve_id) DO UPDATE SET
           risk_score = EXCLUDED.risk_score, severity = EXCLUDED.severity, is_kev = EXCLUDED.is_kev,
           has_exploit = EXCLUDED.has_exploit, epss = EXCLUDED.epss, cvss = EXCLUDED.cvss,
           published = EXCLUDED.published, last_modified = EXCLUDED.last_modified,
-          data = EXCLUDED.data, synced_at = now()`
+          data = EXCLUDED.data, synced_at = now(),
+          imported_by = COALESCE(EXCLUDED.imported_by, cves.imported_by)`
     })
     await sql.transaction(stmts)
   }

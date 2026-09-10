@@ -1,39 +1,39 @@
 /**
- * Traduction centralisée des erreurs d'auth (codes Better Auth + erreurs OAuth
- * renvoyées en query string) vers des messages FR conviviaux. Source unique.
+ * Centralized translation of auth errors (Better Auth codes + OAuth errors
+ * returned in the query string) into friendly English messages. Single source.
  */
 const MESSAGES: Record<string, string> = {
-  // Email / mot de passe
-  invalid_email_or_password: "Email ou mot de passe incorrect.",
-  "invalid email or password": "Email ou mot de passe incorrect.",
-  user_already_exists: "Un compte existe déjà avec cet email.",
-  "user already exists": "Un compte existe déjà avec cet email.",
-  weak_password: "Mot de passe trop faible (8 caractères minimum).",
-  password_too_short: "Mot de passe trop court (8 caractères minimum).",
-  email_not_verified: "Ton email n'est pas encore vérifié — regarde ta boîte mail.",
+  // Email / password
+  invalid_email_or_password: "Incorrect email or password.",
+  "invalid email or password": "Incorrect email or password.",
+  user_already_exists: "An account already exists with this email.",
+  "user already exists": "An account already exists with this email.",
+  weak_password: "Password too weak (8 characters minimum).",
+  password_too_short: "Password too short (8 characters minimum).",
+  email_not_verified: "Your email isn't verified yet — check your inbox.",
 
   // Account linking
   account_not_linked:
-    "Cet email est déjà utilisé avec une autre méthode de connexion. Connecte-toi avec celle-ci, puis lie ce fournisseur depuis ton compte.",
-  account_already_linked: "Ce fournisseur est déjà lié à ton compte.",
-  unable_to_unlink_last_account: "Impossible de retirer ta dernière méthode de connexion.",
+    "This email is already used with another sign-in method. Sign in with that one, then link this provider from your account.",
+  account_already_linked: "This provider is already linked to your account.",
+  unable_to_unlink_last_account: "You can't remove your last sign-in method.",
 
   // OAuth
   state_mismatch:
-    "Session OAuth expirée ou cookies bloqués. Réessaie (le mode VPN / navigation privée bloque souvent les cookies).",
-  access_denied: "Connexion annulée.",
-  oauth_cancelled: "Connexion annulée.",
-  invalid_callback: "Retour OAuth invalide. Réessaie la connexion.",
-  invalid_token: "Lien invalide ou expiré.",
+    "OAuth session expired or cookies blocked. Try again (VPN mode / private browsing often blocks cookies).",
+  access_denied: "Sign-in cancelled.",
+  oauth_cancelled: "Sign-in cancelled.",
+  invalid_callback: "Invalid OAuth callback. Try signing in again.",
+  invalid_token: "Invalid or expired link.",
 
   // Session / rate limit
-  session_expired: "Ta session a expiré. Reconnecte-toi.",
-  too_many_requests: "Trop de tentatives. Patiente un instant puis réessaie.",
-  rate_limited: "Trop de tentatives. Patiente un instant puis réessaie.",
+  session_expired: "Your session has expired. Sign in again.",
+  too_many_requests: "Too many attempts. Wait a moment and try again.",
+  rate_limited: "Too many attempts. Wait a moment and try again.",
 }
 
 export function friendlyAuthError(input?: string | null): string {
-  if (!input) return "Une erreur est survenue. Réessaie."
+  if (!input) return "Something went wrong. Try again."
   const key = input.toLowerCase().trim()
   if (MESSAGES[key]) return MESSAGES[key]
   for (const k of Object.keys(MESSAGES)) if (key.includes(k)) return MESSAGES[k]

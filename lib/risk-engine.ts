@@ -2,7 +2,7 @@
  * Moteur de scoring RBVM (porté depuis risk-engine.js).
  * Risk = CVSS×0.4 + EPSS×0.4 + KEV×0.2, chaque signal normalisé sur 0–100.
  */
-import type { RiskTone } from "./types";
+import type { RiskTone, ZeroDayKind, ZeroDayExploitState } from "./types";
 
 export const RISK_WEIGHTS = { cvss: 0.4, epss: 0.4, kev: 0.2 } as const;
 
@@ -26,10 +26,10 @@ export function computeRiskScore(
 
 export function riskLevel(score: number | null): { level: string; tone: RiskTone } {
   const s = score ?? 0;
-  if (s >= 75) return { level: "Critique", tone: "critical" };
-  if (s >= 50) return { level: "Élevé", tone: "high" };
-  if (s >= 25) return { level: "Moyen", tone: "medium" };
-  return { level: "Faible", tone: "low" };
+  if (s >= 75) return { level: "Critical", tone: "critical" };
+  if (s >= 50) return { level: "High", tone: "high" };
+  if (s >= 25) return { level: "Medium", tone: "medium" };
+  return { level: "Low", tone: "low" };
 }
 
 /** Classes Tailwind par niveau de risque / sévérité. */
@@ -47,4 +47,45 @@ export function severityFromCvss(score: number | string | null): RiskTone {
   if (s >= 7) return "high";
   if (s >= 4) return "medium";
   return "low";
+}
+
+export function computeZeroDayRisk(
+  kind: ZeroDayKind,
+  exploitState: ZeroDayExploitState,
+  isKev: boolean,
+  hasExploit: boolean,
+  cvss?: number | null,
+  epss?: number | null
+): number {
+  const base = { reserved: 30, advisory: 50, prepub_exploited: 70 }[kind];
+  let boost = 0;
+  if (exploitState === "kev-confirmed") {
+    boost = 25;
+  } else if (exploitState === "source-reported") {
+    boost = 20;
+  } else if (exploitState === "poc-published") {
+    boost = 10;
+  }
+  let risk = base + boost + (isKev ? 10 : 0) + (hasExploit ? 5 : 0);
+  if (cvss) {
+    risk += Math.min(15, cvss);
+  }
+  if (epss) {
+    risk += Math.round((epss * 100) / 6);
+  }
+  if (kind === "prepub_exploited" && risk < 70) {
+    risk = 70;
+  }
+  if (exploitState === "kev-confirmed" && risk < 80) {
+    risk = 80;
+  }
+  if (exploitState === "source-reported" && risk < 70) {
+    risk = 70;
+  }
+  risk = Math.max(0, Math.min(100, risk));
+  return Math.round(risk * 10) / 10;
+}
+
+export function zeroDaySeverity(risk: number): RiskTone {
+  return riskLevel(risk).tone;
 }

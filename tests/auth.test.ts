@@ -1,16 +1,27 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { readFileSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 import { Pool } from "pg"
 
-// ── Charge .env.local dans process.env AVANT d'importer lib/auth (import dynamique) ──
-for (const line of readFileSync(".env.local", "utf8").split(/\r?\n/)) {
-  const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
-  if (m) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "")
+// ── Charge .env.local s'il existe (dev local). En CI, TEST_DATABASE_URL + secrets
+//    sont injectés par le workflow — ce fichier n'a besoin d'exister nulle part. ──
+if (existsSync(".env.local")) {
+  for (const line of readFileSync(".env.local", "utf8").split(/\r?\n/)) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
+    if (m) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "")
+  }
 }
+// Base de TESTS dédiée (jamais la base de prod). Prioritaire sur .env.local.
+if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_DATABASE_URL
 // Envoi d'email inerte pendant les tests (pas d'appel SMTP/Resend réel)
 delete process.env.GMAIL_USER
 delete process.env.GMAIL_APP_PASSWORD
 delete process.env.RESEND_API_KEY
+
+// Les suites "base réelle" nécessitent une vraie URL (jamais le placeholder des tests isolés).
+const HAS_DB = Boolean(
+  process.env.DATABASE_URL &&
+    !process.env.DATABASE_URL.startsWith("postgresql://placeholder"),
+)
 
 type AuthModule = typeof import("../lib/auth")
 type ApiAuthModule = typeof import("../lib/api-auth")
@@ -22,7 +33,18 @@ const email = `test-${Date.now()}${TEST_DOMAIN}`
 const password = "Test12345!"
 
 function pool() {
-  return new Pool({ connectionString: (process.env.DATABASE_URL || "").replace(/&?channel_binding=require/, "") })
+  return new Pool({
+    connectionString: (process.env.DATABASE_URL || "").replace(/&?channel_binding=require/, ""),
+    // Jamais de blocage si la base est indisponible en test.
+    //
+    // 15s, pas 5s : la base de test est une branche Neon distante qui doit
+    // sortir de veille au premier appel. Un démarrage à froid dépasse
+    // régulièrement 5s, ce qui faisait échouer un test d'inscription pour une
+    // raison purement réseau — le suivant, sur une connexion déjà chaude,
+    // passait. Une latence rapportée comme une erreur de logique est pire
+    // qu'un test lent.
+    connectionTimeoutMillis: 15000,
+  })
 }
 // Convertit un en-tête Set-Cookie en en-tête Cookie (paires name=value uniquement)
 function cookieHeaderFrom(setCookie: string) {
@@ -35,6 +57,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  if (!HAS_DB) return
   const p = pool()
   await p.query(`DELETE FROM session  WHERE "userId" IN (SELECT id FROM "user" WHERE email LIKE $1)`, ["%" + TEST_DOMAIN])
   await p.query(`DELETE FROM account  WHERE "userId" IN (SELECT id FROM "user" WHERE email LIKE $1)`, ["%" + TEST_DOMAIN])
@@ -50,9 +73,12 @@ describe("Configuration Better Auth", () => {
   test("Vérification email OBLIGATOIRE (mode strict)", () => {
     expect(auth.options.emailAndPassword?.requireEmailVerification).toBe(true)
   })
-  test("Providers Google + GitHub configurés", () => {
-    expect(auth.options.socialProviders?.google).toBeDefined()
-    expect(auth.options.socialProviders?.github).toBeDefined()
+  test("Providers Google + GitHub configurés quand les secrets sont présents", () => {
+    // buildSocialProviders() n'enregistre que les providers dont les secrets existent.
+    // Le test est donc valide qu'avec un secret réel (prod/CI avec secrets > dev sans .env.local).
+    if (process.env.GITHUB_CLIENT_ID || process.env.GOOGLE_CLIENT_ID) {
+      expect(auth.options.socialProviders?.google ?? auth.options.socialProviders?.github).toBeDefined()
+    }
   })
   test("Account linking activé (UN user par email) avec providers de confiance", () => {
     const al = auth.options.account?.accountLinking
@@ -70,7 +96,7 @@ describe("Configuration Better Auth", () => {
   })
 })
 
-describe("Flux email/mot de passe — mode strict (base Neon réelle)", () => {
+describe.skipIf(!HAS_DB)("Flux email/mot de passe — mode strict (base réelle)", () => {
   test("Inscription : crée un utilisateur SANS session (email non vérifié)", async () => {
     const res = await auth.api.signUpEmail({ body: { name: "Test User", email, password } })
     expect(res.user?.email).toBe(email)

@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useRef, useState } from "react"
+import { Suspense, useRef, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { friendlyAuthError } from "@/lib/auth-errors"
@@ -17,6 +17,17 @@ function VerifyForm() {
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""])
   const [verifying, setVerifying] = useState(false)
   const [resending, setResending] = useState(false)
+  // `null` while unknown, so the warning never flashes before the answer
+  // arrives and never claims a working deployment is broken.
+  const [mailConfigured, setMailConfigured] = useState<boolean | null>(null)
+  useEffect(() => {
+    fetch("/api/mail-status")
+      .then((r) => (r.ok ? r.json() : { configured: true }))
+      .then((d) => setMailConfigured(Boolean(d.configured)))
+      // On failure assume it works: telling someone their email is broken when
+      // it is not would be worse than staying quiet.
+      .catch(() => setMailConfigured(true))
+  }, [])
   const [err, setErr] = useState<string | null>(null)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
 
@@ -49,8 +60,8 @@ function VerifyForm() {
       setErr(friendlyAuthError(error.code || error.message)); setDigits(["", "", "", "", "", ""]); inputs.current[0]?.focus()
       return
     }
-    toast.success("Email vérifié ✅")
-    // En mode strict, la vérif ne crée pas forcément de session -> on vérifie et sinon on renvoie à la connexion
+    toast.success("Email verified ✅")
+    // In strict mode, verifying doesn't necessarily create a session -> check and fall back to sign-in
     const { data } = await authClient.getSession()
     setVerifying(false)
     if (data?.user) router.push(dest)
@@ -62,22 +73,41 @@ function VerifyForm() {
     const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "email-verification" })
     setResending(false)
     if (error) toast.error(friendlyAuthError(error.code || error.message))
-    else toast.success("Nouveau code envoyé — vérifie ta boîte (et les spams)")
+    else toast.success("New code sent — check your inbox (and spam folder)")
   }
 
   if (!email) {
     return (
       <Card className="glass p-6 text-center">
-        <p className="text-sm text-muted-foreground">Adresse email manquante. Reviens depuis l&apos;inscription ou ton compte.</p>
-        <Button className="mt-4" onClick={() => router.push("/login")}>Retour</Button>
+        <p className="text-sm text-muted-foreground">Missing email address. Go back through sign-up or your account.</p>
+        <Button className="mt-4" onClick={() => router.push("/login")}>Back</Button>
       </Card>
     )
   }
 
   return (
     <Card className="glass p-6">
-      <h1 className="mb-1 text-2xl font-bold">Vérifie ton email</h1>
-      <p className="mb-5 text-sm text-muted-foreground">On a envoyé un code à 6 chiffres à <strong className="text-foreground">{email}</strong>. Saisis-le ci-dessous.</p>
+      <h1 className="mb-1 text-2xl font-bold">Verify your email</h1>
+
+      {mailConfigured === false ? (
+        <div className="mb-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm leading-relaxed text-amber-100">
+          <p className="mb-2 font-medium">This deployment cannot send email, so no code was delivered.</p>
+          <p className="mb-2">
+            The account was created and the code was generated — it just has nowhere to go. This is a server
+            configuration gap, not something you can fix from this page.
+          </p>
+          <p className="text-xs">
+            Whoever operates this instance should set <code>RESEND_API_KEY</code> (or{" "}
+            <code>GMAIL_USER</code> + <code>GMAIL_APP_PASSWORD</code>) and run{" "}
+            <code>bun run doctor</code>, which lists exactly what is missing. The code is written to the server logs
+            in the meantime.
+          </p>
+        </div>
+      ) : (
+        <p className="mb-5 text-sm text-muted-foreground">
+          We sent a 6-digit code to <strong className="text-foreground">{email}</strong>. Enter it below.
+        </p>
+      )}
 
       <div className="mb-4 flex justify-center gap-2" onPaste={(e) => { const t = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6); if (t) { e.preventDefault(); setDigit(0, t); if (t.length === 6) verify(t) } }}>
         {digits.map((d, i) => (
@@ -99,13 +129,13 @@ function VerifyForm() {
       {err && <p className="mb-3 text-center text-sm text-red-400">⚠️ {err}</p>}
 
       <Button className="w-full" disabled={verifying || code.length !== 6} onClick={() => verify()}>
-        {verifying ? "Vérification…" : "Vérifier"}
+        {verifying ? "Verifying…" : "Verify"}
       </Button>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
-        Pas reçu ?{" "}
+        Didn&apos;t get it?{" "}
         <button onClick={resend} disabled={resending} className="text-cyan-400 underline disabled:opacity-50">
-          {resending ? "Envoi…" : "Renvoyer le code"}
+          {resending ? "Sending…" : "Resend code"}
         </button>
       </p>
     </Card>
@@ -115,7 +145,7 @@ function VerifyForm() {
 export default function VerifyEmailPage() {
   return (
     <main className="mx-auto flex min-h-[82vh] max-w-md flex-col justify-center px-4">
-      <Suspense fallback={<Card className="glass p-6 text-muted-foreground">Chargement…</Card>}>
+      <Suspense fallback={<Card className="glass p-6 text-muted-foreground">Loading…</Card>}>
         <VerifyForm />
       </Suspense>
     </main>

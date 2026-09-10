@@ -1,11 +1,23 @@
 import Link from "next/link"
 import Image from "next/image"
 
+/**
+ * Product pages. Everything below `/` requires a session — the footer still
+ * lists them so the site map is complete, and a signed-out visitor is taken to
+ * the login screen with their destination preserved rather than to a dead end.
+ *
+ * `/exposure` was missing entirely, which left the platform's largest feature
+ * unreachable from the footer.
+ */
 const NAV = [
-  { href: "/", label: "Accueil" },
+  { href: "/", label: "Home" },
   { href: "/dashboard", label: "CVE Dashboard" },
-  { href: "/statistics", label: "Statistiques" },
-  { href: "/assets", label: "Actifs" },
+  { href: "/zero-days", label: "0-Days" },
+  { href: "/exposure", label: "Exposure" },
+  { href: "/assets", label: "My Assets" },
+  { href: "/statistics", label: "Statistics" },
+  { href: "/sources", label: "Sources & Health" },
+  { href: "/account", label: "Account" },
 ]
 
 const RESOURCES = [
@@ -13,6 +25,20 @@ const RESOURCES = [
   { href: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog", label: "CISA KEV" },
   { href: "https://www.first.org/epss/", label: "FIRST EPSS" },
   { href: "https://attack.mitre.org", label: "MITRE ATT&CK" },
+]
+
+/**
+ * Publicly reachable, deliberately. Terms and a privacy policy readable only
+ * after signing in would be meaningless, and `security.txt` has to be fetchable
+ * by a researcher who has no account.
+ *
+ * `/sources` moved to NAV: it stopped being pure attribution when the ingestion
+ * health panel landed on it, and it is gated like the rest of the product.
+ */
+const LEGAL = [
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/.well-known/security.txt", label: "Security / Disclosure" },
 ]
 
 const SOCIALS = [
@@ -63,8 +89,8 @@ export function Footer() {
 
       <div className="mx-auto max-w-6xl px-4 py-14">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12">
-          {/* Marque */}
-          <div className="lg:col-span-5">
+          {/* Brand */}
+          <div className="lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-3">
               <Image src="/logo.png" alt="OCTUPUS VOC" width={44} height={44} className="drop-shadow-[0_2px_12px_rgba(139,92,246,0.6)]" />
               <span className="flex flex-col leading-tight">
@@ -76,7 +102,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Vulnerability Operations Center — priorisation des vulnérabilités par le <span className="text-foreground">risque réel</span>, en fusionnant CVSS, EPSS et CISA KEV.
+              Vulnerability Operations Center — prioritizing vulnerabilities by <span className="text-foreground">real-world risk</span>, fusing CVSS, EPSS and CISA KEV.
             </p>
           </div>
 
@@ -91,9 +117,9 @@ export function Footer() {
             </FooterColumn>
           </div>
 
-          {/* Ressources */}
+          {/* Resources */}
           <div className="lg:col-span-2">
-            <FooterColumn title="Ressources">
+            <FooterColumn title="Resources">
               {RESOURCES.map((l) => (
                 <li key={l.href}>
                   <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-foreground">{l.label}</a>
@@ -102,8 +128,19 @@ export function Footer() {
             </FooterColumn>
           </div>
 
+          {/* Legal */}
+          <div className="lg:col-span-2">
+            <FooterColumn title="Legal">
+              {LEGAL.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-muted-foreground transition-colors hover:text-foreground">{l.label}</Link>
+                </li>
+              ))}
+            </FooterColumn>
+          </div>
+
           {/* Contact */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Contact</h3>
             <div className="flex gap-2.5">
               {SOCIALS.map((s) => (
@@ -125,7 +162,7 @@ export function Footer() {
 
         {/* Bas de page */}
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-sm text-muted-foreground sm:flex-row">
-          <span>© 2026 OCTUPUS-VOC. Tous droits réservés.</span>
+          <span>© 2026 OCTUPUS-VOC. All rights reserved.</span>
           <span>
             Developed by: <span className="font-medium text-foreground">TBINI Mustapha Amin</span> — <span className="neon-text font-semibold">OCTUPUS</span>
           </span>

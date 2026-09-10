@@ -23,13 +23,21 @@
 *.pem
 
 # debug
+# Any log written into the working tree. The specific npm/yarn/pnpm patterns
+# below did not cover ad-hoc ones — `backfill.log` and `backfill.err.log` sat
+# untracked-but-visible in the project root, which is how a log with a
+# connection string in it ends up in a screen share.
+*.log
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — never commit real secrets
 .env*
+# ...but DO ship the annotated template, or a fresh clone has no config guide.
+!.env.example
 
 # typescript
 *.tsbuildinfo

@@ -37,7 +37,7 @@ export function FacetPicker({
       {selected.size > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {[...selected].map((s) => (
-            <Badge key={s} onClick={() => onToggle(s)} className="cursor-pointer bg-primary/20 text-foreground hover:bg-primary/30" title="Retirer">
+            <Badge key={s} onClick={() => onToggle(s)} className="cursor-pointer bg-primary/20 text-foreground hover:bg-primary/30" title="Remove">
               {s} ✕
             </Badge>
           ))}
@@ -48,7 +48,7 @@ export function FacetPicker({
 
       <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-border bg-background/40">
         {filtered.length === 0 ? (
-          <p className="p-3 text-center text-xs text-muted-foreground">Aucun résultat</p>
+          <p className="p-3 text-center text-xs text-muted-foreground">No results</p>
         ) : (
           filtered.map((o) => {
             const on = selected.has(o.name)

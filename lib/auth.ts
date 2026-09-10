@@ -3,6 +3,7 @@ import { emailOTP } from "better-auth/plugins"
 import { Pool } from "pg"
 import { dash } from "@better-auth/infra"
 import { sendOtpEmail, sendWelcomeEmail } from "@/lib/mailer"
+import { getAppUrl } from "@/lib/app-url"
 
 /**
  * Système d'authentification OCTUPUS-VOC — Better Auth (source de vérité unique).
@@ -19,10 +20,9 @@ import { sendOtpEmail, sendWelcomeEmail } from "@/lib/mailer"
 const APP_NAME = "OCTUPUS"
 const isProd = process.env.NODE_ENV === "production"
 
-// URL de base : BETTER_AUTH_URL explicite, sinon l'URL de prod Vercel (auto), sinon localhost.
-const baseURL =
-  process.env.BETTER_AUTH_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
+// Base URL: explicit BETTER_AUTH_URL, else the Vercel production URL, else localhost.
+// Shared with lib/mailer.ts via lib/app-url.ts so the two can never drift apart.
+const baseURL = getAppUrl()
 
 // Origines de confiance : baseURL + localhost + toutes les URLs Vercel (alias prod, déploiement, branche).
 // Vercel expose ces variables automatiquement -> couvre l'alias ET l'URL avec le hash.
@@ -78,7 +78,7 @@ export const auth = betterAuth({
           try {
             await sendWelcomeEmail(user.email, user.name)
           } catch (e) {
-            console.error("[welcome] envoi échoué:", e)
+            console.error("[welcome] send failed:", e)
           }
         },
       },
@@ -144,7 +144,7 @@ export const auth = betterAuth({
           await sendOtpEmail(email, otp, type, 5)
         } catch (e) {
           // Un échec d'envoi ne doit jamais bloquer l'inscription/connexion.
-          console.error("[email-otp] envoi échoué:", e)
+          console.error("[email-otp] send failed:", e)
         }
       },
     }),

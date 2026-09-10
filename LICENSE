@@ -154,7 +154,32 @@ applicable laws governing intellectual property and copyright in the
 jurisdiction of the Author, without regard to conflict of law principles.
 
 ===============================================================================
-11. CONTACT
+11. PUBLIC DATA FEED EXCEPTION
+===============================================================================
+
+Notwithstanding Section 2, the Author grants a limited, revocable, non-exclusive
+right to READ the public 0-day/pre-CVE tracker and the read-only CVE endpoints
+made available at the Author's discretion (currently at
+https://octupus-voc.vercel.app/zero-days and the corresponding public API
+routes), and to display, cite, or build upon that DATA, provided that:
+
+(a) attribution to OCTUPUS-VOC and to the underlying third-party data sources
+    (see the Data Sources & Attribution page) is preserved;
+
+(b) this exception applies ONLY to the data returned by those specific public
+    endpoints, and grants NO right whatsoever to the Software's source code,
+    architecture, design, database schema, or branding, all of which remain
+    fully covered by Sections 1–3 above;
+
+(c) the data is not scraped in bulk to republish or resell it as a competing
+    aggregation product, and any programmatic access respects the Service's
+    published rate limits and Terms of Service.
+
+This exception may be narrowed, suspended, or revoked at any time at the
+Author's discretion, for example if abused.
+
+===============================================================================
+12. CONTACT
 ===============================================================================
 
 For licensing requests, commercial inquiries, partnership proposals,

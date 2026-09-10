@@ -1,0 +1,18 @@
+# Bun test configuration.
+#
+# The default per-test budget is 5s. Several suites talk to a real Postgres
+# branch over HTTP, and a single test that seeds a row and then asserts on a few
+# transitions makes half a dozen round trips to another continent — which lands
+# just either side of 5s depending on the day. That produced failures that
+# looked like logic errors and were actually latency.
+#
+# Raising the budget does not weaken a single assertion: every test still
+# asserts exactly what it asserted before, and a genuine hang is still caught,
+# just at 30s instead of 5s. Tests that should be fast are kept honest by the
+# suite's total runtime, not by a per-test stopwatch measuring the network.
+# NOTE: this key is not reliably honoured by the current bun version — a test
+# still tripped the 5s default while it was set. The authoritative timeout is
+# the `--timeout` flag on the `test` script in package.json; this is kept only
+# so a bare `bun test` is not left on the 5s default.
+[test]
+timeout = 30000

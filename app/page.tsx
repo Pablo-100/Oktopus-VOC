@@ -76,30 +76,58 @@ function useThreeBackground(canvasRef: React.RefObject<HTMLCanvasElement | null>
 }
 
 /* ------------------------------------------------------------------ data */
+/**
+ * The product's entry points.
+ *
+ * `/exposure` was missing entirely — the largest feature in the platform was
+ * unreachable from the landing page. The 0-day card also promised "public, no
+ * account needed", which stopped being true when the tracker was gated; a
+ * landing page that advertises access the product refuses is the worst place
+ * for a stale claim.
+ */
 const MODULES = [
-  { href: "/dashboard", icon: "🐛", title: "CVE Dashboard", desc: "Priorisation RBVM, triage, SLA, filtres avancés et alertes." },
-  { href: "/dashboard", icon: "🕸️", title: "Threat Intelligence", desc: "Graphe de menace, CAPEC / MITRE ATT&CK, exploit intelligence." },
-  { href: "/statistics", icon: "📊", title: "Statistiques", desc: "Tendances CVE, CVSS & EPSS, Top éditeurs / produits / CWE." },
+  { href: "/exposure", icon: "🛰️", title: "Exposure Intelligence", desc: "What of yours is reachable from the internet, which CVEs it correlates to, and how strong the evidence is — from passive provider data, never a scan." },
+  { href: "/dashboard", icon: "🐛", title: "CVE Dashboard", desc: "RBVM prioritization, triage, SLA, advanced filters and alerts." },
+  { href: "/zero-days", icon: "☠️", title: "0-Day Tracker", desc: "Pre-CVE and zero-day intelligence, merged from 4 independent sources." },
+  { href: "/assets", icon: "⭐", title: "My Assets", desc: "Declare your stack — or accept what the providers already detected on your hosts — and see only the CVEs that reach you." },
+  { href: "/statistics", icon: "📊", title: "Statistics", desc: "CVE trends, CVSS & EPSS distributions, top vendors / products / CWE." },
 ]
 const STEPS = [
-  { n: "1", t: "Gravité (CVSS)", d: "La sévérité technique de la faille, sur 0–10." },
-  { n: "2", t: "Probabilité (EPSS)", d: "La probabilité qu'elle soit exploitée sous 30 jours." },
-  { n: "3", t: "Réalité (CISA KEV)", d: "Est-elle déjà exploitée dans la nature ?" },
+  { n: "1", t: "Severity (CVSS)", d: "The technical severity of the flaw, on a 0–10 scale." },
+  { n: "2", t: "Probability (EPSS)", d: "The likelihood it gets exploited within 30 days." },
+  { n: "3", t: "Reality (CISA KEV)", d: "Is it already being exploited in the wild?" },
 ]
-const SOURCES = ["NVD", "Vulners", "EPSS · FIRST", "CISA KEV", "IA (OpenRouter)"]
+/**
+ * Only what is actually wired up. "Vulners" was listed here and appears nowhere
+ * in the codebase — naming a feed that contributes nothing is the same class of
+ * claim as an inflated record count.
+ */
+const SOURCES = [
+  "NVD", "EPSS · FIRST", "CISA KEV", "GitHub Advisories", "Google Project Zero",
+  "Shodan", "Netlas", "Censys", "GreyNoise", "AbuseIPDB",
+]
+/**
+ * Deliberate FLOORS, not point-in-time readings.
+ *
+ * These claimed 280k CVEs and 1,631 KEV entries against a database holding
+ * 88,514 and 378 — numbers that were either aspirational or true of some other
+ * deployment. A hardcoded exact figure on a marketing page is guaranteed to
+ * drift into a lie, so each is rounded DOWN to a bound that stays true as the
+ * corpus grows, and both quantities only ever grow.
+ */
 const STATS = [
-  { target: 280, suffix: "k+", cap: "CVE analysées (NVD)" },
-  { target: 1631, suffix: "", cap: "failles KEV suivies" },
-  { target: 3, suffix: "", cap: "signaux fusionnés (RBVM)" },
-  { target: 5, suffix: "", cap: "sources temps réel" },
+  { target: 88, suffix: "k+", cap: "CVEs analyzed (NVD)" },
+  { target: 370, suffix: "+", cap: "KEV flaws tracked" },
+  { target: 10, suffix: "", cap: "intelligence sources" },
+  { target: 5, suffix: "min", cap: "sync cadence" },
 ]
 const FEATURES = [
-  { icon: "⚖️", t: "Risk Score expliqué", d: "Contributions CVSS / EPSS / KEV détaillées + explication humaine." },
-  { icon: "🤖", t: "Agent IA", d: "Analyse en clair : exploitation, impact, remédiation, scénario d'attaque." },
-  { icon: "🕸️", t: "Graphe de menace", d: "CVE → CWE → CAPEC → ATT&CK → exploit → advisory, cliquable." },
-  { icon: "🎯", t: "Triage & SLA", d: "Statut par CVE, échéances de remédiation, threat feed SOC." },
-  { icon: "🔎", t: "Filtres avancés", d: "KEV, exploit, critiques, vecteur, CWE, Risk Score min." },
-  { icon: "📤", t: "Export & alertes", d: "Export CSV/JSON et notifications Telegram enrichies." },
+  { icon: "⚖️", t: "Explained risk score", d: "Detailed CVSS / EPSS / KEV contributions, in plain language." },
+  { icon: "🔬", t: "Evidence you can audit", d: "Every finding is tiered — confirmed, version-level, product-level — and only the strong tiers can raise an alert." },
+  { icon: "🎯", t: "SOC alert workflow", d: "Acknowledge, assign, resolve or suppress with a reason. Batch-triage forty at once; every decision is in one timeline." },
+  { icon: "🔑", t: "Your keys, your quota", d: "Bring your own exposure-provider accounts. Keys are encrypted at rest and never shown again after you save them." },
+  { icon: "🕸️", t: "Threat graph", d: "CVE → CWE → CAPEC → ATT&CK → exploit → advisory, clickable." },
+  { icon: "📤", t: "Export & alerts", d: "CSV export of the queue you filtered, and enriched Telegram notifications." },
 ]
 
 function Counter({ target, suffix }: { target: number; suffix: string }) {
@@ -115,7 +143,7 @@ function Counter({ target, suffix }: { target: number; suffix: string }) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [target])
-  return <>{n.toLocaleString("fr-FR")}{suffix}</>
+  return <>{n.toLocaleString("en-US")}{suffix}</>
 }
 
 export default function Home() {
@@ -140,15 +168,17 @@ export default function Home() {
         </h1>
         <p className="mt-2 text-xl italic text-foreground/80 sm:text-2xl">« Rise from the deep. Crush every threat. »</p>
         <p className="mx-auto mt-5 max-w-xl text-muted-foreground">
-          Un <strong>Vulnerability Operations Center</strong> qui transforme le chaos des CVE en décisions : priorisation par le <strong>risque réel</strong> (CVSS · EPSS · CISA KEV), threat intelligence et agent IA.
+          A <strong>Vulnerability Operations Center</strong> that turns CVE chaos into decisions: prioritization by{" "}
+          <strong>real-world risk</strong> (CVSS · EPSS · CISA KEV), internet-exposure intelligence on your own assets,
+          a 0-day tracker and a SOC alert workflow.
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/dashboard" className="rounded-full bg-gradient-to-r from-violet-600 to-pink-500 px-7 py-3 font-semibold text-white shadow-lg shadow-violet-600/40 transition hover:-translate-y-0.5">
-            Ouvrir le CVE Dashboard
+          <Link href="/signup" className="rounded-full bg-gradient-to-r from-violet-600 to-pink-500 px-7 py-3 font-semibold text-white shadow-lg shadow-violet-600/40 transition hover:-translate-y-0.5">
+            Create a free account
           </Link>
-          <Link href="/statistics" className="rounded-full border border-border bg-white/5 px-7 py-3 font-semibold transition hover:-translate-y-0.5 hover:bg-white/10">
-            Voir les statistiques
+          <Link href="/login" className="rounded-full border border-border bg-white/5 px-7 py-3 font-semibold transition hover:-translate-y-0.5 hover:bg-white/10">
+            Sign in
           </Link>
         </div>
 
@@ -173,15 +203,15 @@ export default function Home() {
       {/* MODULES */}
       <section className="mx-auto max-w-6xl px-4 py-16">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Modules</p>
-        <h2 className="mb-8 text-3xl font-bold tracking-tight">Trois portes d&apos;entrée, un seul cerveau</h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <h2 className="mb-8 text-3xl font-bold tracking-tight">{MODULES.length} doors in, one brain</h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {MODULES.map((m) => (
             <Link key={m.title} href={m.href}>
               <Card className="group h-full p-6 transition hover:-translate-y-2 hover:border-primary/50">
                 <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 text-2xl shadow-lg shadow-violet-600/30">{m.icon}</div>
                 <h3 className="mb-2 text-xl font-semibold">{m.title}</h3>
                 <p className="text-sm text-muted-foreground">{m.desc}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-cyan-400">Explorer →</span>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-cyan-400">Explore →</span>
               </Card>
             </Link>
           ))}
@@ -190,8 +220,8 @@ export default function Home() {
 
       {/* RBVM */}
       <section className="mx-auto max-w-6xl px-4 py-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Le moteur</p>
-        <h2 className="mb-8 text-3xl font-bold tracking-tight">Priorisation par le risque réel (RBVM)</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">The engine</p>
+        <h2 className="mb-8 text-3xl font-bold tracking-tight">Prioritization by real-world risk (RBVM)</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {STEPS.map((s) => (
             <Card key={s.n} className="p-6">
@@ -205,14 +235,14 @@ export default function Home() {
           <code className="rounded-xl border border-border bg-primary/10 px-4 py-2 text-cyan-400">Risk = CVSS×0.4 + EPSS×0.4 + KEV×0.2</code>
         </p>
         <p className="mx-auto mt-6 max-w-xl text-center text-muted-foreground">
-          Une CVE 9.8 jamais exploitée <strong>descend</strong>, une 7.5 activement exploitée <strong>remonte</strong>. Tu traites ce qui compte vraiment.
+          A 9.8 CVE never exploited <strong>drops</strong>, a 7.5 actively exploited in the wild <strong>rises</strong>. You work on what actually matters.
         </p>
       </section>
 
-      {/* CAPACITÉS */}
+      {/* CAPABILITIES */}
       <section className="mx-auto max-w-6xl px-4 py-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Capacités</p>
-        <h2 className="mb-8 text-3xl font-bold tracking-tight">De l&apos;analyste junior au VOC</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Capabilities</p>
+        <h2 className="mb-8 text-3xl font-bold tracking-tight">From junior analyst to full VOC</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <Card key={f.t} className="glass glow-hover accent-top p-5">
@@ -226,7 +256,8 @@ export default function Home() {
 
       <footer className="border-t border-border py-10 text-center text-sm text-muted-foreground">
         <div className="mb-1 font-semibold text-foreground">🐙 OCTUPUS</div>
-        © 2025 Tbini Mustapha Amin · Licence MIT
+        © 2026 Tbini Mustapha Amin · The 0-day and CVE feeds are free to read (see{" "}
+        <Link href="/terms" className="underline decoration-dotted hover:text-foreground">Terms</Link>) · code is proprietary
       </footer>
     </div>
   )

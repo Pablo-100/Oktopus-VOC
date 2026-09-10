@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui/sonner"
 
 const outfitHeading = Outfit({ subsets: ["latin"], variable: "--font-heading" })
 const notoSans = Noto_Sans({ subsets: ["latin"], variable: "--font-sans" })
@@ -15,8 +16,11 @@ const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
 export const metadata: Metadata = {
   title: "OCTUPUS — Rise from the deep. Crush every threat",
+  // What search results and link previews show. It described the 0-day tracker
+  // as public, which stopped being true when the tracker was gated — a promise
+  // made in the one place a visitor reads before they can check it.
   description:
-    "Vulnerability Operations Center : priorisation des CVE par le risque réel (CVSS · EPSS · CISA KEV), threat intelligence et analytics.",
+    "Vulnerability Operations Center: real-world risk prioritization for CVEs (CVSS · EPSS · CISA KEV), internet-exposure intelligence on your own assets, 0-day tracking and a SOC alert workflow.",
 }
 
 export const viewport: Viewport = {
@@ -30,7 +34,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="fr"
+      lang="en"
       suppressHydrationWarning
       className={cn(
         "antialiased",
@@ -46,6 +50,11 @@ export default function RootLayout({
           <Navbar />
           {children}
           <Footer />
+          {/* Mounts sonner's render target. Without it every `toast.*` call in
+              the app is a silent no-op: eight pages — account, assets,
+              dashboard, password reset, email verification — were reporting
+              both success and failure into nothing. */}
+          <Toaster richColors closeButton position="top-right" />
         </ThemeProvider>
         <SpeedInsights />
         <Analytics />

@@ -41,28 +41,28 @@ function SignupForm() {
 
   return (
     <Card className="glass p-6">
-      <h1 className="mb-1 text-2xl font-bold">Créer un compte</h1>
-      <p className="mb-5 text-sm text-muted-foreground">Rejoins ton VOC OCTUPUS</p>
+      <h1 className="mb-1 text-2xl font-bold">Create an account</h1>
+      <p className="mb-5 text-sm text-muted-foreground">Join your OCTUPUS VOC</p>
 
       <div className="grid gap-2">
         <Button variant="outline" disabled={!!social} onClick={() => withProvider("github")}>
-          {social === "github" ? "Redirection…" : "S'inscrire avec GitHub"}
+          {social === "github" ? "Redirecting…" : "Sign up with GitHub"}
         </Button>
         <Button variant="outline" disabled={!!social} onClick={() => withProvider("google")}>
-          {social === "google" ? "Redirection…" : "S'inscrire avec Google"}
+          {social === "google" ? "Redirecting…" : "Sign up with Google"}
         </Button>
       </div>
-      <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" /></div>
+      <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" /></div>
 
       <form onSubmit={submit} className="grid gap-3">
-        <Input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+        <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
         <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-        <Input type="password" placeholder="Mot de passe (8+ caractères)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
+        <Input type="password" placeholder="Password (8+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
         {shownError && <p className="text-sm text-red-400">⚠️ {shownError}</p>}
-        <Button type="submit" disabled={loading}>{loading ? "Création…" : "Créer le compte"}</Button>
+        <Button type="submit" disabled={loading}>{loading ? "Creating…" : "Create account"}</Button>
       </form>
 
-      <p className="mt-4 text-sm text-muted-foreground">Déjà un compte ? <Link href="/login" className="text-cyan-400 underline">Se connecter</Link></p>
+      <p className="mt-4 text-sm text-muted-foreground">Already have an account? <Link href="/login" className="text-cyan-400 underline">Sign in</Link></p>
     </Card>
   )
 }
@@ -70,7 +70,7 @@ function SignupForm() {
 export default function SignupPage() {
   return (
     <main className="mx-auto flex min-h-[82vh] max-w-md flex-col justify-center px-4">
-      <Suspense fallback={<Card className="glass p-6 text-muted-foreground">Chargement…</Card>}>
+      <Suspense fallback={<Card className="glass p-6 text-muted-foreground">Loading…</Card>}>
         <SignupForm />
       </Suspense>
     </main>

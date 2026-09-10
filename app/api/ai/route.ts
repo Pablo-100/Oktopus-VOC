@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireUser } from "@/lib/api-auth"
+import { rateLimited, keyFrom } from "@/lib/rate-limit"
 
 const SYSTEM_PROMPT =
   "Tu es un analyste Cyber Threat Intelligence dans un VOC. " +
@@ -11,16 +12,20 @@ const SYSTEM_PROMPT =
 
 export async function POST(req: Request) {
   const gate = await requireUser(req); if (gate.deny) return gate.deny
+
+  const limited = rateLimited(`ai:${keyFrom(req, gate.user?.email)}`, 3, 60_000)
+  if (limited) return limited
+
   const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) return NextResponse.json({ error: "OPENROUTER_API_KEY manquante (.env.local)" }, { status: 503 })
+  if (!apiKey) return NextResponse.json({ error: "OPENROUTER_API_KEY missing (.env.local)" }, { status: 503 })
 
   let context: unknown
   try {
     context = (await req.json()).context
   } catch {
-    return NextResponse.json({ error: "JSON invalide" }, { status: 400 })
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
-  if (!context) return NextResponse.json({ error: "Champ context requis" }, { status: 400 })
+  if (!context) return NextResponse.json({ error: "context field is required" }, { status: 400 })
 
   const models = [
     process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b:free",

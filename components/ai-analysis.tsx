@@ -48,7 +48,7 @@ export function AiAnalysis({ vuln }: { vuln: Vuln }) {
     try {
       const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ context }) })
       const data = await r.json()
-      if (!r.ok) throw new Error(data.error || "Échec")
+      if (!r.ok) throw new Error(data.error || "Failed")
       setMd(data.text)
     } catch (e) {
       setErr((e as Error).message)
@@ -59,12 +59,12 @@ export function AiAnalysis({ vuln }: { vuln: Vuln }) {
 
   return (
     <div>
-      <Button size="sm" onClick={run} disabled={loading}>{loading ? "Analyse en cours…" : "🤖 Générer l'analyse IA"}</Button>
+      <Button size="sm" onClick={run} disabled={loading}>{loading ? "Analyzing…" : "🤖 Generate AI analysis"}</Button>
       {err && <p className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-sm">⚠️ {err}</p>}
       {md && (
         <div className="mt-3 space-y-1 rounded-lg border border-border bg-primary/5 p-4 text-sm leading-relaxed">
           {renderMarkdown(md)}
-          <p className="pt-2 text-xs text-muted-foreground">🤖 Généré par IA à partir des seules données de la CVE — à vérifier.</p>
+          <p className="pt-2 text-xs text-muted-foreground">🤖 AI-generated from CVE data alone — verify before acting.</p>
         </div>
       )}
     </div>

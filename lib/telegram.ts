@@ -2,7 +2,7 @@
  * Construction & envoi des alertes Telegram (serveur uniquement).
  * Utilisé par le collecteur de fond ET la route /api/telegram.
  */
-import type { Vuln } from "@/lib/types"
+import type { Vuln, ZeroDay } from "@/lib/types"
 import { THREAT_MAP } from "@/lib/threat-map"
 
 export type AlertCtx = {
@@ -66,8 +66,16 @@ export function buildMessage(c: AlertCtx) {
   return L.join("\n")
 }
 
-/** Envoie un message à Telegram. Renvoie true si OK. */
+/** Sends a message to Telegram. Returns true on success. */
 export async function sendTelegram(ctx: AlertCtx): Promise<boolean> {
+  return sendTelegramRaw(buildMessage(ctx))
+}
+
+/**
+ * Sends a raw pre-formatted HTML message to Telegram (no CVE context needed) —
+ * used for operational notices such as 0-day source health alerts.
+ */
+export async function sendTelegramRaw(html: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   const chatId = process.env.TELEGRAM_CHAT_ID
   if (!token || !chatId) return false
@@ -75,7 +83,7 @@ export async function sendTelegram(ctx: AlertCtx): Promise<boolean> {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: buildMessage(ctx), parse_mode: "HTML", disable_web_page_preview: true }),
+      body: JSON.stringify({ chat_id: chatId, text: html, parse_mode: "HTML", disable_web_page_preview: true }),
     })
     return r.ok
   } catch {
@@ -111,4 +119,61 @@ export function ctxFromVuln(v: Vuln): AlertCtx {
     description: v.description,
     advisory,
   }
+}
+
+/** Contexte d'alerte pour un 0-day (plus léger, sans CAPEC/ATT&CK enrichis). */
+export function ctxFromZeroDay(z: ZeroDay): AlertCtx {
+  const advisory = z.references.find((r) => /advisory|vendor/i.test(r))
+  const cvssVal = z.cvss
+  return {
+    cve_id: z.cveId ?? z.id,
+    severity: z.severity,
+    risk_score: z.riskScore,
+    risk_level: z.severity,
+    cvss: cvssVal ?? undefined,
+    epss: z.epss != null ? (z.epss * 100).toFixed(1) + "%" : null,
+    kev: z.isKev,
+    exploit: z.hasExploit,
+    cwe: z.references.map((r) => r.replace(/.*\/(CWE-\d+).*/, "$1")).filter((r) => /^CWE-\d+$/.test(r)),
+    capec: [],
+    attack: [],
+    description: z.description ?? undefined,
+    advisory,
+  }
+}
+
+/** Construit le message Telegram pour un 0-day (plus court, pas de section CAPEC/ATT&CK). */
+export function buildZeroDayMessage(z: ZeroDay): string {
+  const sevLabel: Record<string, string> = { critical: "CRITIQUE", high: "ÉLEVÉE", medium: "MOYENNE", low: "FAIBLE" }
+  const sevDot: Record<string, string> = { critical: "🔴", high: "🟠", medium: "🟡", low: "🟢" }
+  const sev = z.severity || "low"
+  const rule = "━━━━━━━━━━━━━━━━━━━━"
+  const L: string[] = []
+  const cvssVal = z.cvss
+
+  L.push("<b>OCTUPUS-VOC · Alerte 0-day / pré-CVE</b>")
+  L.push("")
+  L.push(`${sevDot[sev] || "⚪"}  <b>${esc(z.id)}</b> ${z.kind === "prepub_exploited" ? "🔥" : z.kind === "reserved" ? "🕐" : "🧩"}`)
+  L.push(`Kind : <b>${z.kind}</b> · Source : <b>${z.source}</b>`)
+  L.push(`Sévérité : <b>${sevLabel[sev] || "-"}</b>   ·   Risk : <b>${z.riskScore}/100</b>`)
+
+  L.push(rule)
+  L.push("<b>Signaux</b>")
+  L.push(`•  CVSS : <code>${esc(String(cvssVal ?? "-"))}</code>`)
+  L.push(`•  EPSS : <code>${esc(String(z.epss ?? "-"))}</code>`)
+  L.push(`•  CISA KEV : <b>${z.isKev ? "Oui — activement exploité" : "Non"}</b>`)
+  L.push(`•  Exploit public : <b>${z.exploitState ?? "—"}</b>`)
+
+  if (z.description) {
+    L.push(rule)
+    L.push("<b>Description</b>")
+    L.push(esc(trunc(z.description, 300)))
+  }
+
+  L.push(rule)
+  const nvdLink = z.cveId ? `   ·   <a href="https://nvd.nist.gov/vuln/detail/${esc(z.cveId)}">Fiche NVD</a>` : ""
+  const ghsaLink = z.ghsaId ? `   ·   <a href="https://github.com/advisories/${esc(z.ghsaId)}">GitHub Advisory</a>` : ""
+  const defendLink = z.permalink ? `   ·   <a href="${esc(z.permalink)}">defend.network</a>` : ""
+  L.push(`${nvdLink}${ghsaLink}${defendLink}`)
+  return L.join("\n")
 }

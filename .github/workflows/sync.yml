@@ -1,21 +1,79 @@
 name: OCTUPUS CVE Sync
 
-# Déclenche le collecteur serveur (fetch NVD incrémental -> enrichissement -> PostgreSQL -> Telegram).
-# GRATUIT : GitHub Actions appelle l'endpoint sécurisé toutes les ~10 min.
-# Prérequis : ajouter le secret de dépôt CRON_SECRET (Settings → Secrets and variables → Actions).
+# Triggers the server-side collector (incremental NVD fetch -> enrichment ->
+# PostgreSQL -> Telegram alerts). Free: GitHub Actions calls the secured
+# endpoint on a schedule, so no always-on worker is needed.
+#
+# ── SETUP (required — the workflow fails fast with instructions if skipped) ──
+# In your repo: Settings -> Secrets and variables -> Actions, add:
+#   1. APP_URL      (variable or secret) e.g. https://your-app.vercel.app
+#   2. CRON_SECRET  (secret) — must match CRON_SECRET in your app's env
+#
+# APP_URL is read as a repo *variable* first, then falls back to a *secret*,
+# so either works. It is intentionally NOT hardcoded: a hardcoded URL would
+# make every fork/clone silently sync someone else's deployment.
 
 on:
   schedule:
-    - cron: "*/5 * * * *" # toutes les 5 min (GitHub peut retarder de quelques minutes)
-  workflow_dispatch: {} # bouton "Run workflow" pour un déclenchement manuel
+    - cron: "*/5 * * * *" # every 5 min (GitHub may delay by a few minutes)
+  workflow_dispatch: {} # "Run workflow" button for a manual trigger
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Déclencher la synchronisation
+      - name: Trigger synchronization
+        env:
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::error::APP_URL is not set. Add it under Settings -> Secrets and variables -> Actions (as a variable or a secret), e.g. https://your-app.vercel.app"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET is not set. Add it as an Actions secret; it must match CRON_SECRET in your app's environment."
+            exit 1
+          fi
           curl -fsS -m 120 \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://octupus-voc.vercel.app/api/cron/sync" \
-          && echo "✅ Sync déclenchée"
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/sync" \
+          && echo "Sync triggered"
+
+      # Zero-day sync is a SEPARATE HTTP call on purpose: it gets its own 60s
+      # serverless budget. When both syncs shared one invocation the CVE pass
+      # consumed the whole allowance and the zero-day pass was never reached —
+      # the function was killed rather than throwing, so nothing was logged and
+      # the data silently froze while every source still reported healthy.
+      #
+      # `if: always()` so a failing CVE sync cannot also stop the zero-day feed.
+      - name: Trigger zero-day synchronization
+        if: always()
+        env:
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL / CRON_SECRET missing."
+            exit 1
+          fi
+          # The status code is inspected rather than letting `curl -f` collapse
+          # every failure into one opaque exit code. A 404 here has exactly one
+          # cause and one fix, and saying so turns a red X into an instruction.
+          code=$(curl -sS -o /tmp/zd.out -w '%{http_code}' -m 120             -H "Authorization: Bearer ${CRON_SECRET}"             "${APP_URL%/}/api/cron/zero-days" || echo "000")
+
+          if [ "$code" = "404" ]; then
+            echo "::error title=Zero-day endpoint not deployed::Returned 404. This route exists in the repository but not in the running deployment, so the zero-day feed stays frozen while CVE sync keeps succeeding. Deploy the current main branch."
+            exit 1
+          fi
+          if [ "$code" = "401" ]; then
+            echo "::error title=CRON_SECRET mismatch::The endpoint rejected the token. The Actions secret must match CRON_SECRET in the deployment environment."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error title=Zero-day sync failed::HTTP $code"
+            head -c 400 /tmp/zd.out
+            exit 1
+          fi
+          echo "Zero-day sync triggered"
+          cat /tmp/zd.out

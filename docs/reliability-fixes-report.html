@@ -1,0 +1,236 @@
+<title>Octupus Reliability Fixes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Noto+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f7f8fc;
+    --surface: #ffffff;
+    --surface-2: #eef0f8;
+    --border: #dcdfec;
+    --text: #171a2b;
+    --text-muted: #5b6178;
+    --text-faint: #8b91a8;
+    --cyan: #0e7490;
+    --cyan-soft: #e0f4f8;
+    --violet: #7c3aed;
+    --violet-soft: #f1e9fd;
+    --red: #dc2626;
+    --red-soft: #fde4e4;
+    --amber: #b45309;
+    --amber-soft: #fdf1dc;
+    --emerald: #047857;
+    --emerald-soft: #dcf5ec;
+    --shadow: 0 1px 2px rgba(23,26,43,.06), 0 10px 28px -14px rgba(23,26,43,.14);
+    --radius: 12px;
+    --font-heading: "Outfit", system-ui, sans-serif;
+    --font-sans: "Noto Sans", system-ui, sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "Cascadia Code", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e0f1c;
+      --surface: #171a2e;
+      --surface-2: #1d2138;
+      --border: rgba(255,255,255,0.1);
+      --text: #f2f3fa;
+      --text-muted: #a3a8c2;
+      --text-faint: #7b8099;
+      --cyan: #22d3ee;
+      --cyan-soft: #103038;
+      --violet: #a78bfa;
+      --violet-soft: #241b3d;
+      --red: #fb7185;
+      --red-soft: #341620;
+      --amber: #fbbf24;
+      --amber-soft: #332a0c;
+      --emerald: #34d399;
+      --emerald-soft: #0f2b21;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e0f1c;
+    --surface: #171a2e;
+    --surface-2: #1d2138;
+    --border: rgba(255,255,255,0.1);
+    --text: #f2f3fa;
+    --text-muted: #a3a8c2;
+    --text-faint: #7b8099;
+    --cyan: #22d3ee;
+    --cyan-soft: #103038;
+    --violet: #a78bfa;
+    --violet-soft: #241b3d;
+    --red: #fb7185;
+    --red-soft: #341620;
+    --amber: #fbbf24;
+    --amber-soft: #332a0c;
+    --emerald: #34d399;
+    --emerald-soft: #0f2b21;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--cyan); }
+  ::selection { background: var(--cyan-soft); }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px 96px; }
+
+  header.hero { border-bottom: 1px solid var(--border); background: linear-gradient(180deg, var(--surface-2), var(--bg) 75%); }
+  .hero-inner { max-width: 940px; margin: 0 auto; padding: 52px 24px 36px; }
+  .eyebrow { font-family: var(--font-mono); font-size: .76rem; letter-spacing: .1em; text-transform: uppercase; color: var(--cyan); margin: 0 0 16px; }
+  h1 { font-family: var(--font-heading); font-weight: 700; font-size: clamp(1.7rem, 3.6vw, 2.4rem); line-height: 1.15; margin: 0 0 14px; letter-spacing: -.01em; text-wrap: balance; max-width: 20ch; }
+  .thesis { font-size: 1.02rem; color: var(--text-muted); max-width: 62ch; margin: 0 0 28px; }
+  .thesis code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 6px; border-radius: 5px; font-size: .92em; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .stat { background: var(--surface); padding: 14px 16px; }
+  .stat .n { font-family: var(--font-mono); font-weight: 600; font-size: 1.3rem; font-variant-numeric: tabular-nums; display: block; }
+  .stat .n.good { color: var(--emerald); }
+  .stat .l { font-size: .74rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .04em; }
+
+  section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+  section:last-of-type { border-bottom: none; }
+  .section-head { margin-bottom: 24px; }
+  .section-head h2 { font-family: var(--font-heading); font-weight: 700; font-size: 1.4rem; margin: 0 0 8px; }
+  .section-head p { color: var(--text-muted); margin: 0; max-width: 62ch; }
+
+  .diagram-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 20px; margin-bottom: 8px; }
+  .diagram-caption { font-size: .82rem; color: var(--text-faint); text-align: center; margin: 0; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; min-width: 620px; }
+  thead th { text-align: left; font-family: var(--font-mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-faint); padding: 11px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  tbody td { padding: 13px 14px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: .89rem; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.mono { font-family: var(--font-mono); font-size: .82rem; color: var(--text-muted); white-space: nowrap; }
+  .sev { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; padding: 3px 9px; border-radius: 100px; text-transform: uppercase; letter-spacing: .03em; display: inline-block; }
+  .sev.high { background: var(--red-soft); color: var(--red); }
+  .sev.med { background: var(--amber-soft); color: var(--amber); }
+  .sev.low { background: var(--violet-soft); color: var(--violet); }
+  .fixed-tag { font-family: var(--font-mono); font-size: .7rem; color: var(--emerald); background: var(--emerald-soft); padding: 2px 8px; border-radius: 100px; }
+
+  .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .provider-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; background: var(--surface); position: relative; }
+  .provider-card::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; }
+  .provider-card.live::before { background: var(--emerald); }
+  .provider-card.blocked::before { background: var(--amber); }
+  .provider-card.off::before { background: var(--text-faint); }
+  .provider-name { font-family: var(--font-heading); font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+  .provider-detail { font-size: .84rem; color: var(--text-muted); line-height: 1.5; }
+  .provider-fact { font-family: var(--font-mono); font-size: .78rem; color: var(--text); margin-top: 6px; }
+
+  footer { max-width: 940px; margin: 0 auto; padding: 28px 24px 0; color: var(--text-faint); font-size: .8rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  footer .fmono { font-family: var(--font-mono); }
+
+  .pre-mermaid { margin: 0; }
+
+  @media (max-width: 560px) { h1 { max-width: none; } }
+</style>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Octupus-VOC — Reliability</p>
+    <h1>What was actually broken, and what isn't anymore</h1>
+    <p class="thesis">You hit <code>CVE load failed: 500 (database unavailable?)</code>. That error banner was blaming NVD rate limits — but <code>/api/cves</code> never calls NVD, it only reads the database. Traced it to a real bug in the shared DB-init code that affected every route, not just this one. Fixed four issues total; verified all of them against the actual test suite and a production build, not just by reading the code.</p>
+    <div class="stat-row">
+      <div class="stat"><span class="n good">4</span><span class="l">bugs fixed</span></div>
+      <div class="stat"><span class="n good">66 / 66</span><span class="l">tests passing</span></div>
+      <div class="stat"><span class="n good">0</span><span class="l">typecheck errors</span></div>
+      <div class="stat"><span class="n good">✓</span><span class="l">production build</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section id="root-cause">
+    <div class="section-head">
+      <h2>The bug you actually hit</h2>
+      <p><code>lib/db.ts</code> memoizes the database migration in a module-level variable so it only runs once per server instance. It never accounted for that one run failing.</p>
+    </div>
+    <div class="diagram-scroll">
+      <pre class="mermaid pre-mermaid">
+flowchart TB
+    subgraph before["Before — one hiccup, broken forever"]
+        direction TB
+        A1["Request 1 arrives"] --> B1{"Run migration"}
+        B1 -->|"transient Neon blip"| C1["ready = REJECTED promise<br/>(never reset)"]
+        C1 --> D1["Request 1: 500"]
+        E1["Request 2, 3, 4 ... arrive"] --> F1["same cached rejected promise<br/>returned instantly"]
+        F1 --> G1["every request: 500<br/>until the server process restarts"]
+    end
+    subgraph after["After — self-healing"]
+        direction TB
+        A2["Request 1 arrives"] --> B2{"Run migration"}
+        B2 -->|"transient Neon blip"| C2["ready reset to null<br/>on failure"]
+        C2 --> D2["Request 1: 500 — once"]
+        E2["Request 2 arrives"] --> F2{"Run migration again<br/>(fresh attempt)"}
+        F2 -->|"Neon recovered"| G2["Request 2: 200 OK"]
+    end
+      </pre>
+    </div>
+    <p class="diagram-caption">Every route that reads or writes data calls <code>initDb()</code> first — CVEs, 0-days, assets, triage, metrics, exposure, GreyNoise. One shared fix covers all of them.</p>
+  </section>
+
+  <section id="found-fixed">
+    <div class="section-head">
+      <h2>Everything found &amp; fixed</h2>
+      <p>Found while tracing the reported error — not a general audit, just what surfaced by following this one bug to its root.</p>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Severity</th><th>Where</th><th>Issue</th><th>Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="sev high">High</span></td>
+            <td class="mono">lib/db.ts</td>
+            <td>A single transient DB connection failure permanently broke <em>every</em> route for the life of the server process — not just the one request that hit it.</td>
+            <td><span class="fixed-tag">fixed</span> Reset the cached migration promise on failure so the next request retries cleanly.</td>
+          </tr>
+          <tr>
+            <td><span class="sev med">Medium</span></td>
+            <td class="mono">app/dashboard/page.tsx</td>
+            <td>Error banner blamed "NVD rate-limits" on every failure, but this fetch (<code>/api/cves</code>) is 100% database-backed and never calls NVD — the advice was always wrong for this path.</td>
+            <td><span class="fixed-tag">fixed</span> Rewrote the message to describe the real failure domain and point at the existing 60s auto-retry.</td>
+          </tr>
+          <tr>
+            <td><span class="sev med">Medium</span></td>
+            <td class="mono">app/api/zero-days/route.ts</td>
+            <td>Returned raw <code>(e as Error).message</code> straight to the client on failure — an infra/stack leak, and on a <strong>public, unauthenticated</strong> endpoint specifically.</td>
+            <td><span class="fixed-tag">fixed</span> Switched to <code>apiError()</code>, the project's own sanitizing helper already used everywhere else.</td>
+          </tr>
+          <tr>
+            <td><span class="sev low">Low</span></td>
+            <td class="mono">app/api/assets/route.ts</td>
+            <td>Same raw-error-message leak in all three handlers (GET/POST/DELETE) — lower severity since this route requires login, but still against the project's own documented rule.</td>
+            <td><span class="fixed-tag">fixed</span> Same <code>apiError()</code> fix, all three handlers.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="providers">
+    <div class="section-head">
+      <h2>Exposure providers — current live status</h2>
+      <p>From the earlier live verification against the real APIs (not assumed) — still accurate as of this pass.</p>
+    </div>
+    <div class="provider-grid">
+      <div class="provider-card live"><div class="provider-name">GreyNoise</div><div class="provider-detail">Live, real schema verified on Log4Shell</div><div class="provider-fact">exploited · inKev · epssScore</div></div>
+      <div class="provider-card live"><div class="provider-name">LeakIX</div><div class="provider-detail">Live, sample-size counts</div><div class="provider-fact">~20 for &quot;Apache&quot;</div></div>
+      <div class="provider-card live"><div class="provider-name">Netlas</div><div class="provider-detail">Live, sample-size counts</div><div class="provider-fact">endpoint fixed this session</div></div>
+      <div class="provider-card blocked"><div class="provider-name">ZoomEye</div><div class="provider-detail">Code fixed, account has 0 API credits</div><div class="provider-fact">billing, not code</div></div>
+      <div class="provider-card blocked"><div class="provider-name">FOFA</div><div class="provider-detail">Missing account email + 0 credits</div><div class="provider-fact">billing + config</div></div>
+      <div class="provider-card off"><div class="provider-name">Censys</div><div class="provider-detail">Auth confirmed working, search endpoint still unresolved</div><div class="provider-fact">needs API Explorer URL</div></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <span>Octupus-VOC — reliability pass</span>
+  <span class="fmono">2026-08-27</span>
+</footer>

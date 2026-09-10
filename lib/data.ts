@@ -1,35 +1,63 @@
 /**
  * Pipeline de données OCTUPUS (porté depuis dashboard.js + risk-engine.js).
- * Tout est récupéré côté navigateur (CORS ouvert) : NVD, EPSS (FIRST.org),
- * CISA KEV (fichier local /kev.json). Puis enrichissement RBVM.
+ * Côté client/front : lecture de la BASE uniquement (instantané) + mapping NVD.
+ * Le pipeline réseau (NVD, EPSS, KEV) vit côté serveur : lib/collector.ts,
+ * lib/kev-cache.ts, lib/nvd-archive.ts (Tier A), lib/nvd-search.ts (Tier B).
  */
-import type { Vuln, Severity } from "./types";
-import { computeRiskScore, riskLevel, severityFromCvss } from "./risk-engine";
+import type { Vuln, ZeroDay, Severity } from "./types";
+import { severityFromCvss } from "./risk-engine";
+
+/**
+ * The subset of the NVD 2.0 CVE object this module consumes.
+ *
+ * Deliberately all-optional: the feed omits whatever does not apply to a given
+ * record, so anything not marked optional would be a lie about the wire format.
+ * These replace `any`, which silently accepted a rename or a shape change in the
+ * upstream feed and turned it into `undefined` at runtime instead of an error.
+ */
+interface NvdCvssData {
+  baseScore?: number
+  vectorString?: string
+  // v3.x names
+  attackVector?: string
+  attackComplexity?: string
+  confidentialityImpact?: string
+  integrityImpact?: string
+  availabilityImpact?: string
+  // v2 names for the same concepts
+  accessVector?: string
+  accessComplexity?: string
+}
+interface NvdMetricEntry { cvssData?: NvdCvssData }
+interface NvdDescription { lang?: string; value?: string }
+interface NvdWeakness { description?: NvdDescription[] }
+interface NvdReference { url?: string; tags?: string[] }
+interface NvdCpeMatch { criteria?: string }
+interface NvdNode { cpeMatch?: NvdCpeMatch[] }
+interface NvdConfiguration { nodes?: NvdNode[] }
+
+interface NvdCve {
+  id?: string
+  published?: string
+  lastModified?: string
+  descriptions?: NvdDescription[]
+  weaknesses?: NvdWeakness[]
+  references?: NvdReference[]
+  configurations?: NvdConfiguration[]
+  metrics?: {
+    cvssMetricV31?: NvdMetricEntry[]
+    cvssMetricV30?: NvdMetricEntry[]
+    cvssMetricV2?: NvdMetricEntry[]
+  }
+}
+
+/** One row of the FIRST EPSS API response. */
+interface EpssRow { cve?: string; epss?: string; percentile?: string }
 
 const CVE_REGEX = /^CVE-\d{4}-\d{4,}$/i;
 
-// ---------------------------------------------------------------- NVD
-// Passe par le proxy serveur /api/nvd (clé côté serveur, pas de CORS/rate-limit keyless)
-export async function fetchNvd(keyword = ""): Promise<Vuln[]> {
-  const p = new URLSearchParams();
-  p.set("resultsPerPage", "2000");
-  if (keyword) {
-    p.set("keywordSearch", keyword);
-  } else {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - 7); // fenêtre large -> plus de CVE filtrables
-    p.set("pubStartDate", start.toISOString());
-    p.set("pubEndDate", end.toISOString());
-  }
-  const res = await fetch(`/api/nvd?${p.toString()}`);
-  if (!res.ok) throw new Error(`NVD ${res.status} (réessaie dans 1 min)`);
-  const data = await res.json();
-  return processNvd(data);
-}
-
 export function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
-  const items = (data.vulnerabilities ?? []) as Array<{ cve: Record<string, any> }>;
+  const items = (data.vulnerabilities ?? []) as Array<{ cve: NvdCve }>;
   return items.map(({ cve }) => {
     const metrics = cve.metrics ?? {};
     const v3 =
@@ -37,26 +65,29 @@ export function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
       metrics.cvssMetricV30?.[0]?.cvssData ??
       {};
     const v2 = metrics.cvssMetricV2?.[0]?.cvssData ?? {};
-    const severity: Severity = severityFromCvss(v3.baseScore ?? v2.baseScore);
+    // `?? null` rather than letting `undefined` through: a CVE that is still
+    // awaiting analysis carries no CVSS metric at all, and the scorer's contract
+    // is an explicit null for "unscored".
+    const severity: Severity = severityFromCvss(v3.baseScore ?? v2.baseScore ?? null);
 
     const cweSet = new Set<string>();
-    (cve.weaknesses ?? []).forEach((w: any) =>
-      (w.description ?? []).forEach((d: any) => {
-        if (/^CWE-\d+$/i.test(d.value)) cweSet.add(String(d.value).toUpperCase());
+    (cve.weaknesses ?? []).forEach((w) =>
+      (w.description ?? []).forEach((d) => {
+        if (d.value && /^CWE-\d+$/i.test(d.value)) cweSet.add(String(d.value).toUpperCase());
       }),
     );
 
-    const references = (cve.references ?? []).map((r: any) => ({
-      url: r.url,
+    const references = (cve.references ?? []).map((r) => ({
+      url: r.url ?? "",
       tags: r.tags ?? [],
     }));
-    const hasExploit = references.some((r: any) => (r.tags ?? []).includes("Exploit"));
+    const hasExploit = references.some((r) => (r.tags ?? []).includes("Exploit"));
 
     const vendorSet = new Set<string>();
     const productSet = new Set<string>();
-    (cve.configurations ?? []).forEach((cfg: any) =>
-      (cfg.nodes ?? []).forEach((node: any) =>
-        (node.cpeMatch ?? []).forEach((cpe: any) => {
+    (cve.configurations ?? []).forEach((cfg) =>
+      (cfg.nodes ?? []).forEach((node) =>
+        (node.cpeMatch ?? []).forEach((cpe) => {
           const parts = String(cpe.criteria ?? "").split(":");
           if (parts.length > 4) {
             if (parts[3] && parts[3] !== "*" && parts[3] !== "-")
@@ -68,12 +99,15 @@ export function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
       ),
     );
 
-    const pub = new Date(cve.published);
+    // Guarded: a record with no `published` produced an Invalid Date, which
+    // rendered literally as "Invalid Date" and sorted unpredictably.
+    const pub = cve.published ? new Date(cve.published) : null;
+    const pubValid = pub && !Number.isNaN(pub.getTime()) ? pub : null;
 
     return {
-      cveId: cve.id,
+      cveId: cve.id ?? "",
       description:
-        cve.descriptions?.find((d: any) => d.lang === "en")?.value ??
+        cve.descriptions?.find((d) => d.lang === "en")?.value ??
         "No description available",
       cvssV2: v2.baseScore ?? "-",
       cvssV3: v3.baseScore ?? "-",
@@ -89,8 +123,8 @@ export function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
       impactC: v3.confidentialityImpact ?? v2.confidentialityImpact ?? "-",
       impactI: v3.integrityImpact ?? v2.integrityImpact ?? "-",
       impactA: v3.availabilityImpact ?? v2.availabilityImpact ?? "-",
-      publishedDate: pub.toLocaleDateString("fr-FR"),
-      sortDate: pub,
+      publishedDate: pubValid ? pubValid.toLocaleDateString("en-US") : "-",
+      sortDate: pubValid,
       lastModified: cve.lastModified ?? null,
       epss: null,
       epssPercentile: null,
@@ -99,18 +133,6 @@ export function processNvd(data: { vulnerabilities?: unknown[] }): Vuln[] {
       riskLevel: "",
     } satisfies Vuln;
   });
-}
-
-// ---------------------------------------------------------------- KEV
-export async function loadKev(): Promise<Set<string>> {
-  try {
-    const res = await fetch("/kev.json");
-    if (!res.ok) return new Set();
-    const data = await res.json();
-    return new Set((data.cves ?? []).map((id: string) => id.toUpperCase()));
-  } catch {
-    return new Set();
-  }
 }
 
 // ---------------------------------------------------------------- EPSS
@@ -128,10 +150,11 @@ export async function fetchEpss(
       );
       if (!res.ok) continue;
       const json = await res.json();
-      (json.data ?? []).forEach((row: any) =>
-        result.set(String(row.cve).toUpperCase(), {
-          epss: parseFloat(row.epss),
-          percentile: parseFloat(row.percentile),
+      const payload = json as { data?: EpssRow[] };
+      (payload.data ?? []).forEach((row) =>
+        result.set(String(row.cve ?? "").toUpperCase(), {
+          epss: parseFloat(row.epss ?? "0"),
+          percentile: parseFloat(row.percentile ?? "0"),
         }),
       );
       if (i + BATCH < ids.length) await new Promise((r) => setTimeout(r, 250));
@@ -142,29 +165,6 @@ export async function fetchEpss(
   return result;
 }
 
-// ---------------------------------------------------- enrichissement RBVM
-export async function enrich(vulns: Vuln[]): Promise<Vuln[]> {
-  const [kev, epssMap] = await Promise.all([
-    loadKev(),
-    fetchEpss(vulns.map((v) => v.cveId)),
-  ]);
-  for (const v of vulns) {
-    const key = v.cveId.toUpperCase();
-    const isKev = kev.has(key);
-    const epssData = epssMap.get(key);
-    const epss = epssData ? epssData.epss : null;
-    const bestCvss =
-      v.cvssV3 !== "-" ? v.cvssV3 : v.cvssV2 !== "-" ? v.cvssV2 : 0;
-    v.epss = epss;
-    v.epssPercentile = epssData ? epssData.percentile : null;
-    v.isKev = isKev;
-    if (isKev) v.hasExploit = true;
-    v.riskScore = computeRiskScore(bestCvss, epss, isKev);
-    v.riskLevel = riskLevel(v.riskScore).level;
-  }
-  return vulns;
-}
-
 /**
  * Charge les CVE depuis la BASE (déjà traitées & enrichies par le collecteur serveur).
  * AUCUN appel NVD côté navigateur -> chargement instantané.
@@ -173,7 +173,7 @@ export async function enrich(vulns: Vuln[]): Promise<Vuln[]> {
 export async function loadCves(keyword = ""): Promise<Vuln[]> {
   const url = keyword ? `/api/cves?search=${encodeURIComponent(keyword)}` : "/api/cves";
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Chargement CVE ${res.status} (base indisponible ?)`);
+  if (!res.ok) throw new Error(`CVE load failed: ${res.status} (database unavailable?)`);
   const { cves } = await res.json();
   const list = (cves as Vuln[]).map((v) => ({
     ...v,
@@ -181,4 +181,30 @@ export async function loadCves(keyword = ""): Promise<Vuln[]> {
   }));
   list.sort((a, b) => (b.sortDate?.getTime() ?? 0) - (a.sortDate?.getTime() ?? 0));
   return list;
+}
+
+/**
+ * Charge les 0-day depuis la BASE (déjà traités & enrichis par le collecteur serveur).
+ * AUCUN appel externe côté navigateur -> chargement instantané.
+ * ?kind= reserved|prepub_exploited|advisory|resolved (became_cve=true)
+ * ?search= filtre titre/cve_id/ghsa_id/product
+ * ?active= true -> became_cve=false (par défaut)
+ */
+export async function loadZeroDays(params: { kind?: string; search?: string; active?: string } = {}): Promise<ZeroDay[]> {
+  const sp = new URLSearchParams()
+  if (params.kind) sp.set("kind", params.kind)
+  if (params.search) sp.set("search", params.search)
+  if (params.active) sp.set("active", params.active)
+  const url = sp.toString() ? `/api/zero-days?${sp.toString()}` : "/api/zero-days"
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`0-day load failed: ${res.status} (database unavailable?)`)
+  const { zeroDays } = await res.json()
+  const list = (zeroDays as ZeroDay[]).map((z) => ({
+    ...z,
+    firstSeenAt: z.firstSeenAt ? z.firstSeenAt : null,
+    lastSeenAt: z.lastSeenAt ? z.lastSeenAt : null,
+    resolvedAt: z.resolvedAt ? z.resolvedAt : null,
+  }))
+  list.sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
+  return list
 }

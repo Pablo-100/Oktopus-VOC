@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { sql, initDb } from "@/lib/db"
 import { requireUser } from "@/lib/api-auth"
+import { apiError } from "@/lib/errors"
+import { rateLimited, keyFrom } from "@/lib/rate-limit"
 
 /**
  * Valeurs réelles présentes dans la base (éditeurs & produits), pour alimenter
@@ -14,6 +16,9 @@ const TTL = 5 * 60 * 1000
 export async function GET(req: Request) {
   const gate = await requireUser(req)
   if (gate.deny) return gate.deny
+  // aggregate counts, cached upstream.
+  const denied = rateLimited(keyFrom(req, gate.user.id), 60, 60_000)
+  if (denied) return denied
   try {
     if (cache && Date.now() - cache.at < TTL) {
       return NextResponse.json({ vendors: cache.vendors, products: cache.products, cached: true })
@@ -32,6 +37,6 @@ export async function GET(req: Request) {
     cache = { at: Date.now(), vendors, products }
     return NextResponse.json({ vendors, products }, { headers: { "Cache-Control": "private, max-age=300" } })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message, vendors: [], products: [] }, { status: 500 })
+    return apiError(e, "facets", { vendors: [], products: [] })
   }
 }

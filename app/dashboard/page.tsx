@@ -13,13 +13,16 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { CveDetailDialog } from "@/components/cve-detail-dialog"
+import { ArchiveSearchDialog } from "@/components/archive-search-dialog"
+import { toast } from "sonner"
+import { NoDataYet, NoMatches } from "@/components/empty-state"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend, LabelList,
 } from "recharts"
 
 const AXIS = "#93a1bd"
-const IMPACT = [{ label: "Aucun", color: "#475569" }, { label: "Faible", color: "#eab308" }, { label: "Élevé", color: "#e11d48" }]
-const SEV_LABEL: Record<string, string> = { critical: "Critique", high: "Élevée", medium: "Moyenne", low: "Faible" }
+const IMPACT = [{ label: "None", color: "#475569" }, { label: "Low", color: "#eab308" }, { label: "High", color: "#e11d48" }]
+const SEV_LABEL: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low" }
 const SEV_COLORS: Record<string, string> = { critical: "#e11d48", high: "#f97316", medium: "#eab308", low: "#22c55e" }
 const TTD = {
   contentStyle: { background: "rgba(11,16,34,0.95)", border: "1px solid rgba(139,92,246,0.45)", borderRadius: "10px", color: "#e7ecf5" },
@@ -29,13 +32,13 @@ const TTD = {
 type Preset = "all" | "critical" | "kev" | "exploit" | "high-risk" | "parc"
 
 const TRIAGE: Record<string, string> = {
-  new: "Nouveau", in_progress: "En cours", resolved: "Traité", false_positive: "Faux positif", accepted: "Risque accepté",
+  new: "New", in_progress: "In progress", resolved: "Resolved", false_positive: "False positive", accepted: "Risk accepted",
 }
 
 function RiskBadge({ score, onClick }: { score: number | null; onClick?: () => void }) {
   if (score == null) return <span className="text-muted-foreground">—</span>
   const info = riskLevel(score)
-  return <Badge onClick={onClick} className={cn("cursor-pointer border", TONE_CLASS[info.tone])} title={`${info.level} — cliquer pour l'explication`}>{score}</Badge>
+  return <Badge onClick={onClick} className={cn("cursor-pointer border", TONE_CLASS[info.tone])} title={`${info.level} — click for the explanation`}>{score}</Badge>
 }
 
 function toneOf(score: number | null): RiskTone | null {
@@ -78,9 +81,28 @@ export default function DashboardPage() {
       setTriage(m)
     }).catch(() => { /* base indisponible -> triage vide */ })
   }, [])
-  function setStatus(cve: string, status: string) {
+  async function setStatus(cve: string, status: string) {
+    // Optimistic, but reversible. The previous version applied the change
+    // locally and fired the request into the void, so a rejected write left the
+    // UI showing a triage state the database never received — visible only
+    // after a reload, by which point the analyst had moved on.
+    const rollback = triage
     setTriage((prev) => { const next = { ...prev }; if (!status || status === "new") delete next[cve]; else next[cve] = status; return next })
-    fetch("/api/triage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cve_id: cve, status }) }).catch(() => { /* ignore */ })
+    try {
+      const r = await fetch("/api/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cve_id: cve, status }),
+      })
+      if (!r.ok) {
+        const d = (await r.json().catch(() => ({}))) as { error?: string }
+        setTriage(rollback)
+        toast.error(d.error ?? `Could not save triage state (HTTP ${r.status}).`)
+      }
+    } catch {
+      setTriage(rollback)
+      toast.error("Could not save triage state — the change was undone.")
+    }
   }
 
   // Inventaire d'actifs (Neon) -> risque contextualisé « Mon parc »
@@ -99,9 +121,17 @@ export default function DashboardPage() {
   }, [loadAssets])
   const watchVendors = useMemo(() => new Set(assets.map((a) => (a.vendor || "").toLowerCase()).filter(Boolean)), [assets])
   const watchProducts = useMemo(() => new Set(assets.map((a) => (a.product || "").toLowerCase()).filter(Boolean)), [assets])
-  function inParc(v: Vuln) {
-    return v.vendors.some((x) => watchVendors.has(x.toLowerCase())) || v.products.some((x) => watchProducts.has(x.toLowerCase()))
-  }
+  // Memoised on the watch sets so it is a STABLE reference the filter memo can
+  // depend on. As a plain function it was recreated every render and could not
+  // be listed as a dependency, so `filtered` never recomputed when the asset
+  // inventory finished loading: the "My parc" preset and the ⭐ markers stayed
+  // empty until some unrelated filter happened to change.
+  const inParc = useCallback(
+    (v: Vuln) =>
+      v.vendors.some((x) => watchVendors.has(x.toLowerCase())) ||
+      v.products.some((x) => watchProducts.has(x.toLowerCase())),
+    [watchVendors, watchProducts],
+  )
 
   // background = true -> NE PAS vider le tableau (refresh en arrière-plan, l'utilisateur garde sa place)
   async function load(keyword = "", background = false) {
@@ -130,12 +160,25 @@ export default function DashboardPage() {
     const id = setInterval(() => tick((t) => t + 1), 1000) // décompte vivant
     return () => clearInterval(id)
   }, [])
+  // `null` until mounted. Reading the clock during render makes the
+  // server-rendered HTML and the client's first render disagree — a hydration
+  // mismatch React reports in the console and repairs by throwing away the
+  // server's markup. Ticking it also keeps relative times honest instead of
+  // frozen at first paint.
+  const [nowMs, setNowMs] = useState<number | null>(null)
+  useEffect(() => {
+    setNowMs(Date.now())
+    const id = setInterval(() => setNowMs(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
   function ago(d: Date | null) {
     if (!d) return "—"
-    const s = Math.floor((Date.now() - d.getTime()) / 1000)
-    if (s < 60) return `il y a ${s}s`
+    if (nowMs === null) return "—"
+    const s = Math.floor((nowMs - d.getTime()) / 1000)
+    if (s < 60) return `${s}s ago`
     const m = Math.floor(s / 60)
-    return m === 1 ? "il y a 1 min" : `il y a ${m} min`
+    return m === 1 ? "1 min ago" : `${m} min ago`
   }
 
   function openCve(cveOrVuln: string | Vuln, initialTab = "ov") {
@@ -162,9 +205,9 @@ export default function DashboardPage() {
     const ev: { icon: string; text: string; cve: string; d: number }[] = []
     vulns.forEach((v) => {
       const d = v.sortDate?.getTime() ?? 0
-      if (v.isKev) ev.push({ icon: "🚨", text: `${v.cveId} ajouté au CISA KEV`, cve: v.cveId, d })
-      else if (v.hasExploit) ev.push({ icon: "💥", text: `Exploit public pour ${v.cveId}`, cve: v.cveId, d })
-      else if (v.severity === "critical") ev.push({ icon: "🔥", text: `CVE critique ${v.cveId} (Risk ${v.riskScore ?? "-"})`, cve: v.cveId, d })
+      if (v.isKev) ev.push({ icon: "🚨", text: `${v.cveId} added to CISA KEV`, cve: v.cveId, d })
+      else if (v.hasExploit) ev.push({ icon: "💥", text: `Public exploit for ${v.cveId}`, cve: v.cveId, d })
+      else if (v.severity === "critical") ev.push({ icon: "🔥", text: `Critical CVE ${v.cveId} (Risk ${v.riskScore ?? "-"})`, cve: v.cveId, d })
     })
     return ev.sort((a, b) => b.d - a.d).slice(0, 15)
   }, [vulns])
@@ -175,7 +218,7 @@ export default function DashboardPage() {
     const imp = (k: "impactC" | "impactI" | "impactA") => {
       const o = { NONE: 0, LOW: 0, HIGH: 0 } as Record<string, number>
       vulns.forEach((v) => { const x = v[k]; if (x in o) o[x]++ })
-      return [{ name: "Aucun", value: o.NONE }, { name: "Faible", value: o.LOW }, { name: "Élevé", value: o.HIGH }]
+      return [{ name: "None", value: o.NONE }, { name: "Low", value: o.LOW }, { name: "High", value: o.HIGH }]
     }
     vulns.forEach((v) => {
       const s = v.cvssV3 !== "-" ? Number(v.cvssV3) : v.cvssV2 !== "-" ? Number(v.cvssV2) : 0
@@ -204,7 +247,7 @@ export default function DashboardPage() {
     if (riskMin > 0 && (v.riskScore ?? 0) < riskMin) return false
     if (cweNum && !v.cwes.some((c) => c.replace(/\D/g, "") === cweNum)) return false
     return true
-  }), [vulns, preset, tone, sev, vec, kevOnly, exploitOnly, riskMin, cweNum])
+  }), [vulns, preset, tone, sev, vec, kevOnly, exploitOnly, riskMin, cweNum, inParc])
 
   // Pagination : on remet en page 1 quand un filtre change
   useEffect(() => { setPage(0) }, [preset, tone, sev, vec, cwe, kevOnly, exploitOnly, riskMin])
@@ -213,11 +256,11 @@ export default function DashboardPage() {
   const pageRows = filtered.slice(pageSafe * pageSize, (pageSafe + 1) * pageSize)
 
   function exportCsv() {
-    const head = "CVE,CVSS,EPSS,KEV,Risk,Severite,CWE,Vecteur,Date,Statut\n"
+    const head = "CVE,CVSS,EPSS,KEV,Risk,Severity,CWE,Vector,Date,Status\n"
     const rows = filtered.map((v) => {
       const epss = v.epss != null ? (v.epss * 100).toFixed(1) + "%" : "-"
       const cvss = v.cvssV3 !== "-" ? v.cvssV3 : v.cvssV2
-      const st = TRIAGE[triage[v.cveId]] || "Nouveau"
+      const st = TRIAGE[triage[v.cveId]] || "New"
       return `${v.cveId},${cvss},${epss},${v.isKev ? "YES" : "no"},${v.riskScore ?? "-"},${v.severity},${v.cwes.join(" | ") || "-"},${v.attackVector},${v.publishedDate},${st}`
     }).join("\n")
     const blob = new Blob([head + rows], { type: "text/csv;charset=utf-8;" })
@@ -236,9 +279,9 @@ export default function DashboardPage() {
   }
 
   const presets: { id: Preset; label: string }[] = [
-    { id: "all", label: "Tout" }, { id: "critical", label: "🔥 Critiques" },
-    { id: "kev", label: "🔴 KEV" }, { id: "exploit", label: "💥 Exploit" }, { id: "high-risk", label: "⚡ Risque ≥ 70" },
-    { id: "parc", label: "⭐ Mon parc" },
+    { id: "all", label: "All" }, { id: "critical", label: "🔥 Critical" },
+    { id: "kev", label: "🔴 KEV" }, { id: "exploit", label: "💥 Exploit" }, { id: "high-risk", label: "⚡ Risk ≥ 70" },
+    { id: "parc", label: "⭐ My assets" },
   ]
 
   // Métriques VOC
@@ -254,12 +297,14 @@ export default function DashboardPage() {
       if (["resolved", "accepted", "false_positive"].includes(st)) return false
       if (!v.sortDate) return false
       const days = v.isKev ? 1 : (map[v.severity] ?? 30)
-      return Date.now() > v.sortDate.getTime() + days * 86400000
+      // Same reason: a deadline computed from the render-time clock differs
+      // between server and client, so the count can flicker on hydration.
+      return (nowMs ?? 0) > v.sortDate.getTime() + days * 86400000
     }).length
-  }, [vulns, triage])
+  }, [vulns, triage, nowMs])
   const tiles: { tone: RiskTone; label: string; range: string }[] = [
-    { tone: "critical", label: "Critique", range: "75-100" }, { tone: "high", label: "Élevé", range: "50-74" },
-    { tone: "medium", label: "Moyen", range: "25-49" }, { tone: "low", label: "Faible", range: "0-24" },
+    { tone: "critical", label: "Critical", range: "75-100" }, { tone: "high", label: "High", range: "50-74" },
+    { tone: "medium", label: "Medium", range: "25-49" }, { tone: "low", label: "Low", range: "0-24" },
   ]
 
   return (
@@ -267,35 +312,36 @@ export default function DashboardPage() {
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">CVE Dashboard</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">Priorisation par le risque réel (RBVM · CVSS · EPSS · KEV)</p>
+          <p className="text-sm text-muted-foreground sm:text-base">Prioritization by real-world risk (RBVM · CVSS · EPSS · KEV)</p>
         </div>
         <form className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:w-auto" onSubmit={(e) => { e.preventDefault(); load(search.trim(), true) }}>
-          <Input placeholder="Rechercher (ex. apache)…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-w-0 sm:w-56" />
+          <Input placeholder="Search (e.g. apache)…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-w-0 sm:w-56" />
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:w-full sm:[&_button]:w-auto">
-            <Button type="submit" disabled={refreshing}>{refreshing ? "…" : "Rechercher"}</Button>
-            <Button type="button" variant="outline" onClick={() => { setSearch(""); load("", true) }}>Actualiser</Button>
-            <Button type="button" variant={auto ? "default" : "outline"} onClick={() => setAuto((a) => !a)} title="Auto-actualisation 60s">{auto ? "⏸ Auto" : "▶ Auto"}</Button>
+            <Button type="submit" disabled={refreshing}>{refreshing ? "…" : "Search"}</Button>
+            <Button type="button" variant="outline" onClick={() => { setSearch(""); load("", true) }}>Refresh</Button>
+            <Button type="button" variant={auto ? "default" : "outline"} onClick={() => setAuto((a) => !a)} title="Auto-refresh every 60s">{auto ? "⏸ Auto" : "▶ Auto"}</Button>
+            <ArchiveSearchDialog onImported={() => load(search.trim(), true)} />
           </div>
         </form>
       </div>
-      <p className="mb-3 text-xs text-cyan-400">🔔 Alertes Telegram <b>automatiques côté serveur</b> — le collecteur détecte et envoie les CVE Critical/High/KEV, même sans utilisateur connecté.</p>
+      <p className="mb-3 text-xs text-cyan-400">🔔 Telegram alerts <b>automatic, server-side</b> — the collector detects and sends Critical/High/KEV CVEs even with no user signed in.</p>
 
-      {/* Barre de fraîcheur */}
+      {/* Freshness bar */}
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Dernière synchro : {lastSync ? lastSync.toLocaleTimeString("fr-FR") : "—"}</span>
+        <span className="font-medium text-foreground">Last sync: {lastSync ? lastSync.toLocaleTimeString("en-US") : "—"}</span>
         <span>· {ago(lastSync)}</span>
         <span className="rounded-full bg-white/5 px-2 py-0.5">✅ NVD {vulns.length}</span>
         <span className="rounded-full bg-white/5 px-2 py-0.5">EPSS {vulns.filter((v) => v.epss != null).length}</span>
         <span className="rounded-full bg-white/5 px-2 py-0.5">🔴 KEV {kpis.kev}</span>
-        {refreshing && <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-cyan-300"><span className="h-1.5 w-1.5 animate-ping rounded-full bg-cyan-400" /> actualisation en arrière-plan…</span>}
+        {refreshing && <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-cyan-300"><span className="h-1.5 w-1.5 animate-ping rounded-full bg-cyan-400" /> refreshing in background…</span>}
       </div>
 
-      {/* Métriques VOC (base Neon) */}
+      {/* VOC metrics (Neon database) */}
       <div className="mb-5 flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full border border-border bg-white/5 px-3 py-1">🗂 En cours : <b>{triageStats.in_progress}</b></span>
-        <span className="rounded-full border border-border bg-white/5 px-3 py-1">✅ Traité : <b>{triageStats.resolved}</b></span>
-        <span className={cn("rounded-full border px-3 py-1", slaOverdue > 0 ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-border bg-white/5")}>⏰ SLA dépassé : <b>{slaOverdue}</b></span>
-        <a href="/assets" className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-cyan-300 hover:bg-cyan-500/20">⭐ Actifs surveillés : <b>{assets.length}</b> · gérer →</a>
+        <span className="rounded-full border border-border bg-white/5 px-3 py-1">🗂 In progress: <b>{triageStats.in_progress}</b></span>
+        <span className="rounded-full border border-border bg-white/5 px-3 py-1">✅ Resolved: <b>{triageStats.resolved}</b></span>
+        <span className={cn("rounded-full border px-3 py-1", slaOverdue > 0 ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-border bg-white/5")}>⏰ SLA overdue: <b>{slaOverdue}</b></span>
+        <a href="/assets" className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-cyan-300 hover:bg-cyan-500/20">⭐ Monitored assets: <b>{assets.length}</b> · manage →</a>
       </div>
 
       {/* KPIs */}
@@ -305,15 +351,15 @@ export default function DashboardPage() {
           <div className="mt-1 text-4xl font-bold neon-text">{kpis.total}</div>
         </Card>
         <Card className="glass glow-hover accent-top p-4">
-          <div className="eyebrow text-muted-foreground">Critiques</div>
+          <div className="eyebrow text-muted-foreground">Critical</div>
           <div className="mt-1 text-4xl font-bold text-foreground">{kpis.critical}</div>
         </Card>
         <Card className="glass glow-hover accent-top p-4">
-          <div className="eyebrow text-red-300">Élevées</div>
+          <div className="eyebrow text-red-300">High</div>
           <div className="mt-1 text-4xl font-bold text-red-400">{kpis.high}</div>
         </Card>
         <Card className={cn("glass glow-hover accent-top p-4", kpis.kev > 0 && "kev-pulse")}>
-          <div className="eyebrow text-red-300">🔴 KEV actifs</div>
+          <div className="eyebrow text-red-300">🔴 Active KEV</div>
           <div className="mt-1 text-4xl font-bold text-red-400">{kpis.kev}</div>
         </Card>
       </div>
@@ -321,7 +367,7 @@ export default function DashboardPage() {
       {/* Heatmap + Top10 + Feed */}
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <Card className="glass p-4 lg:col-span-1">
-          <h3 className="mb-3 font-semibold">Heatmap de risque</h3>
+          <h3 className="mb-3 font-semibold">Risk heatmap</h3>
           <div className="grid grid-cols-2 gap-2">
             {tiles.map((t) => (
               <button key={t.tone} onClick={() => setTone(tone === t.tone ? null : t.tone)} className={cn("rounded-xl border p-3 text-left transition", TONE_CLASS[t.tone], tone === t.tone && "ring-2 ring-white")}>
@@ -333,7 +379,7 @@ export default function DashboardPage() {
           </div>
         </Card>
         <Card className="glass p-4">
-          <h3 className="mb-3 font-semibold">🏆 Top 10 à traiter</h3>
+          <h3 className="mb-3 font-semibold">🏆 Top 10 to handle</h3>
           <ol className="space-y-1 text-sm">
             {top10.map((v) => { const info = riskLevel(v.riskScore); return (
               <li key={v.cveId}><button onClick={() => openCve(v)} className="flex w-full items-center justify-between rounded px-1 py-0.5 hover:bg-accent">
@@ -346,18 +392,18 @@ export default function DashboardPage() {
           <h3 className="mb-3 font-semibold">📡 Threat Feed</h3>
           <ul className="space-y-1 text-sm">
             {feed.map((e, i) => <li key={i}><button onClick={() => openCve(e.cve)} className="flex w-full gap-2 rounded px-1 py-0.5 text-left hover:bg-accent"><span>{e.icon}</span><span className="truncate">{e.text}</span></button></li>)}
-            {!feed.length && <li className="text-muted-foreground">Aucun événement notable.</li>}
+            {!feed.length && <li className="text-muted-foreground">No notable events.</li>}
           </ul>
         </Card>
       </div>
 
-      {/* Insights visuels */}
+      {/* Visual insights */}
       <Card className="glass mb-6 p-5">
-        <h3 className="font-semibold">Insights visuels</h3>
-        <p className="mb-4 text-xs text-muted-foreground">Vue d&apos;ensemble du lot chargé — valeurs affichées, détail au survol.</p>
+        <h3 className="font-semibold">Visual insights</h3>
+        <p className="mb-4 text-xs text-muted-foreground">Overview of the loaded batch — values shown, detail on hover.</p>
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
-            <p className="mb-1 text-sm font-medium">Distribution des scores CVSS</p>
+            <p className="mb-1 text-sm font-medium">CVSS score distribution</p>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={insights.cvss} margin={{ top: 18, right: 10, left: -12, bottom: 0 }}>
@@ -371,7 +417,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div>
-            <p className="mb-1 text-sm font-medium">Répartition par sévérité</p>
+            <p className="mb-1 text-sm font-medium">Breakdown by severity</p>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -386,10 +432,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        <p className="mb-1 mt-4 text-sm font-medium">Types d&apos;impact</p>
-        <p className="mb-2 text-xs text-muted-foreground">Répartition Aucun / Faible / Élevé pour chaque dimension (CVSS)</p>
+        <p className="mb-1 mt-4 text-sm font-medium">Impact types</p>
+        <p className="mb-2 text-xs text-muted-foreground">None / Low / High breakdown for each CVSS dimension</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[{ t: "Confidentialité", d: insights.impC }, { t: "Intégrité", d: insights.impI }, { t: "Disponibilité", d: insights.impA }].map((im) => (
+          {[{ t: "Confidentiality", d: insights.impC }, { t: "Integrity", d: insights.impI }, { t: "Availability", d: insights.impA }].map((im) => (
             <div key={im.t} className="text-center">
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -412,38 +458,38 @@ export default function DashboardPage() {
 
       {/* Presets */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">Filtres rapides :</span>
+        <span className="text-sm text-muted-foreground">Quick filters:</span>
         {presets.map((p) => <Button key={p.id} size="sm" variant={preset === p.id ? "default" : "outline"} onClick={() => setPreset(p.id)} className="rounded-full">{p.label}</Button>)}
-        {tone && <Button size="sm" variant="ghost" onClick={() => setTone(null)}>✖ risque: {tone}</Button>}
+        {tone && <Button size="sm" variant="ghost" onClick={() => setTone(null)}>✖ risk: {tone}</Button>}
       </div>
 
-      {/* Filtres avancés */}
+      {/* Advanced filters */}
       <Card className="glass mb-4 p-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <Label className="text-xs text-muted-foreground">Risk Score min : <span className="text-foreground">{riskMin}</span></Label>
+            <Label className="text-xs text-muted-foreground">Min Risk Score: <span className="text-foreground">{riskMin}</span></Label>
             <input type="range" min={0} max={100} step={5} value={riskMin} onChange={(e) => setRiskMin(+e.target.value)} className="mt-2 w-full accent-violet-500" />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Sévérité</Label>
+            <Label className="text-xs text-muted-foreground">Severity</Label>
             <select value={sev} onChange={(e) => setSev(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-background px-2 py-2 text-sm">
-              <option value="all">Toutes</option><option value="critical">Critique</option><option value="high">Élevée</option><option value="medium">Moyenne</option><option value="low">Faible</option>
+              <option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
             </select>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Vecteur d&apos;attaque</Label>
+            <Label className="text-xs text-muted-foreground">Attack vector</Label>
             <select value={vec} onChange={(e) => setVec(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-background px-2 py-2 text-sm">
-              <option value="all">Tous</option><option value="NETWORK">Réseau</option><option value="ADJACENT_NETWORK">Adjacent</option><option value="LOCAL">Local</option><option value="PHYSICAL">Physique</option>
+              <option value="all">All</option><option value="NETWORK">Network</option><option value="ADJACENT_NETWORK">Adjacent</option><option value="LOCAL">Local</option><option value="PHYSICAL">Physical</option>
             </select>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">CWE (n°)</Label>
+            <Label className="text-xs text-muted-foreground">CWE (number)</Label>
             <Input value={cwe} onChange={(e) => setCwe(e.target.value)} placeholder="79, 89, 22…" className="mt-1" />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-2"><Switch id="kevOnly" checked={kevOnly} onCheckedChange={setKevOnly} /><Label htmlFor="kevOnly">🔴 KEV uniquement</Label></div>
-          <div className="flex items-center gap-2"><Switch id="expOnly" checked={exploitOnly} onCheckedChange={setExploitOnly} /><Label htmlFor="expOnly">💥 Exploit connu</Label></div>
+          <div className="flex items-center gap-2"><Switch id="kevOnly" checked={kevOnly} onCheckedChange={setKevOnly} /><Label htmlFor="kevOnly">🔴 KEV only</Label></div>
+          <div className="flex items-center gap-2"><Switch id="expOnly" checked={exploitOnly} onCheckedChange={setExploitOnly} /><Label htmlFor="expOnly">💥 Known exploit</Label></div>
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>⬇ CSV</Button>
             <Button variant="outline" size="sm" onClick={exportJson}>⬇ JSON</Button>
@@ -451,7 +497,7 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {error && <Card className="mb-4 border-red-500/50 bg-red-500/10 p-3 text-sm">⚠️ {error} — NVD limite parfois (5/30s sans clé). Réessaie dans 1 min.</Card>}
+      {error && <Card className="mb-4 border-red-500/50 bg-red-500/10 p-3 text-sm">⚠️ {error} — this reads from the database, not live NVD, so a failure usually means a brief connection hiccup rather than a rate limit. It retries automatically every 60s{auto ? "" : " once you re-enable Auto"}; hit Refresh to try now.</Card>}
 
       {/* Table */}
       <Card className="glass overflow-hidden">
@@ -460,19 +506,24 @@ export default function DashboardPage() {
             <TableHeader className="sticky top-0 bg-card">
               <TableRow>
                 <TableHead>CVE ID</TableHead><TableHead>Description</TableHead><TableHead>CVSS</TableHead>
-                <TableHead>EPSS</TableHead><TableHead>KEV</TableHead><TableHead>Risk</TableHead><TableHead>Sévérité</TableHead>
-                <TableHead>CWE</TableHead><TableHead>Vecteur</TableHead><TableHead>Complexité</TableHead>
-                <TableHead>Date</TableHead><TableHead>Statut</TableHead><TableHead></TableHead>
+                <TableHead>EPSS</TableHead><TableHead>KEV</TableHead><TableHead>Risk</TableHead><TableHead>Severity</TableHead>
+                <TableHead>CWE</TableHead><TableHead>Vector</TableHead><TableHead>Complexity</TableHead>
+                <TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={13} className="py-10 text-center text-muted-foreground">Chargement des CVE…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="py-10 text-center text-muted-foreground">Loading CVEs…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={13} className="py-10 text-center text-muted-foreground">Aucune CVE ne correspond.</TableCell></TableRow>
+                // An empty DATASET and an over-restrictive FILTER are different
+                // problems with different fixes; one message for both is what
+                // makes a fresh install look broken.
+                vulns.length === 0
+                  ? <NoDataYet what="CVE data" syncPath="/api/cron/sync" colSpan={13} />
+                  : <NoMatches what="CVE" colSpan={13} />
               ) : pageRows.map((v) => (
                 <TableRow key={v.cveId} className="cursor-pointer" onClick={() => openCve(v)}>
-                  <TableCell className="whitespace-nowrap font-mono text-xs">{v.cveId}{v.hasExploit && " 💥"}{inParc(v) && <span title="Affecte un actif de votre parc"> ⭐</span>}</TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs">{v.cveId}{v.hasExploit && " 💥"}{inParc(v) && <span title="Affects an asset in your inventory"> ⭐</span>}</TableCell>
                   <TableCell className="max-w-[280px] truncate text-sm text-muted-foreground" title={v.description}>{v.description}</TableCell>
                   <TableCell>{v.cvssV3 !== "-" ? v.cvssV3 : v.cvssV2}</TableCell>
                   <TableCell>{v.epss != null ? (v.epss * 100).toFixed(1) + "%" : "—"}</TableCell>
@@ -498,12 +549,12 @@ export default function DashboardPage() {
         </div>
       </Card>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span className="text-muted-foreground"><b className="text-foreground">{filtered.length}</b> CVE · page {pageSafe + 1}/{totalPages} <span className="text-xs">(50/page)</span></span>
+        <span className="text-muted-foreground"><b className="text-foreground">{filtered.length}</b> CVEs · page {pageSafe + 1}/{totalPages} <span className="text-xs">(50/page)</span></span>
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" disabled={pageSafe <= 0} onClick={() => setPage(0)}>« Début</Button>
-          <Button size="sm" variant="outline" disabled={pageSafe <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>‹ Précédent</Button>
-          <Button size="sm" variant="outline" disabled={pageSafe >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>Suivant ›</Button>
-          <Button size="sm" variant="outline" disabled={pageSafe >= totalPages - 1} onClick={() => setPage(totalPages - 1)}>Fin »</Button>
+          <Button size="sm" variant="outline" disabled={pageSafe <= 0} onClick={() => setPage(0)}>« First</Button>
+          <Button size="sm" variant="outline" disabled={pageSafe <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>‹ Previous</Button>
+          <Button size="sm" variant="outline" disabled={pageSafe >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>Next ›</Button>
+          <Button size="sm" variant="outline" disabled={pageSafe >= totalPages - 1} onClick={() => setPage(totalPages - 1)}>Last »</Button>
         </div>
       </div>
 
