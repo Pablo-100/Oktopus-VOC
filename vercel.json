@@ -1,3 +1,5 @@
 {
-  "crons": []
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [],
+  "installCommand": "bun install --frozen-lockfile || bun install --frozen-lockfile || bun install --frozen-lockfile"
 }

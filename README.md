@@ -808,6 +808,24 @@ Tables are created automatically on first run (`lib/db.ts`) — there is no migr
 
 ## Deployment
 
+### Why `installCommand` retries
+
+`vercel.json` runs `bun install --frozen-lockfile` up to three times. That is not
+superstition: `sharp` arrives as an optional dependency of Next and ships 24
+platform binaries, and bun intermittently fails to extract one of them with
+`Fail extracting tarball` — a known, still-open bun issue
+([#20084](https://github.com/oven-sh/bun/issues/20084),
+[#4549](https://github.com/oven-sh/bun/issues/4549)). It is a download/integrity
+failure rather than a resolution error, so it clears on a retry; a genuinely
+broken dependency fails all three times and still surfaces.
+
+The package that fails, `@img/sharp-libvips-linuxmusl-x64`, is the **musl**
+build. Vercel runs glibc and never uses it. Switching the install to npm would
+also avoid it, but there is no `package-lock.json` in this repository, so npm
+would resolve every version afresh on each deploy and quietly drift away from
+the versions the test suite ran against.
+
+
 Any Node-compatible host works. Vercel is the smoothest path:
 
 1. Import the repository into Vercel.
