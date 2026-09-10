@@ -14,6 +14,23 @@ const outfitHeading = Outfit({ subsets: ["latin"], variable: "--font-heading" })
 const notoSans = Noto_Sans({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
+/**
+ * Rendered per request, not prerendered at build time.
+ *
+ * The Content-Security-Policy in proxy.ts carries a nonce, and a nonce only
+ * exists once a request does. A statically generated page is produced at build
+ * time with no request to draw one from, so Next emits its inline scripts
+ * WITHOUT a nonce — and the strict policy then blocks the very scripts that
+ * boot React. Hydration never starts and the page sits frozen.
+ *
+ * Opting the whole tree into dynamic rendering is what lets the nonce reach the
+ * script tags. The alternative was `script-src 'unsafe-inline'`, which unblocks
+ * the same scripts by permitting ANY inline script — including an injected one,
+ * which is precisely what the header is meant to stop. Losing static generation
+ * on five public pages is the cheaper trade for a security product.
+ */
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "OCTUPUS — Rise from the deep. Crush every threat",
   // What search results and link previews show. It described the 0-day tracker

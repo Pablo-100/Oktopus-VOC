@@ -21,25 +21,14 @@ const securityHeaders = [
     key: "X-DNS-Prefetch-Control",
     value: "off",
   },
-  // CSP : dur en prod (pas de scripts inline/eval), relâché en dev pour le HMR.
-  ...(process.env.NODE_ENV === "production"
-    ? ([
-        {
-          key: "Content-Security-Policy",
-          value: [
-            "default-src 'self'",
-            "script-src 'self'",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: https://*.nvd.nist.gov https://avatars.githubusercontent.com https://*.googleusercontent.com https://*.gstatic.com",
-            "font-src 'self' data:",
-            "connect-src 'self'",
-            "frame-ancestors 'none'",
-            "base-uri 'self'",
-            "form-action 'self'",
-          ].join("; "),
-        },
-      ] satisfies Record<string, string>[])
-    : []),
+  // The Content-Security-Policy is NOT set here.
+  //
+  // It used to be, as a static `script-src 'self'` applied only in production —
+  // which blocked the eleven inline <script> tags Next.js uses to ship the RSC
+  // payload, so hydration never ran in any production build. A static header
+  // cannot carry a per-request nonce, so the policy now lives in proxy.ts where
+  // one can be generated. Keeping a second copy here would emit a duplicate
+  // header and the stricter of the two would win, silently undoing the fix.
 ]
 
 const nextConfig: NextConfig = {
