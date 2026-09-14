@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { authorized } from "@/app/api/cron/sync/route"
+import { getAppUrl } from "@/lib/app-url"
 
 export const dynamic = "force-dynamic"
 
@@ -39,6 +40,8 @@ const WATCHED: Array<{ key: string; why: string }> = [
 ]
 
 export async function GET(req: Request) {
+  // Même source que `baseURL` dans lib/auth.ts : les deux ne peuvent pas diverger.
+  const appUrl = getAppUrl()
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -66,6 +69,26 @@ export async function GET(req: Request) {
           why,
         }
       }),
+      /**
+       * Les URI de redirection OAuth, telles que CE déploiement les envoie.
+       *
+       * `redirect_uri_mismatch` se joue entièrement chez le fournisseur : il
+       * compare ce que l'application envoie à sa propre liste enregistrée, et
+       * refuse avant même d'atteindre notre code. Aucune modification côté
+       * application ne peut donc corriger l'erreur — seule l'inscription de la
+       * bonne valeur le peut.
+       *
+       * Ce que l'application peut faire, en revanche, c'est supprimer toute
+       * incertitude sur la valeur à inscrire. Ces chaînes sont dérivées du même
+       * `baseURL` que celui réellement utilisé pour construire la requête OAuth :
+       * les copier telles quelles garantit la correspondance, sans faute de
+       * frappe ni confusion entre deux domaines voisins.
+       */
+      oauthRedirectUris: {
+        google: `${appUrl}/api/auth/callback/google`,
+        github: `${appUrl}/api/auth/callback/github`,
+        note: "À inscrire à l'identique chez le fournisseur (Google Cloud Console / GitHub OAuth Apps). Pas de barre oblique finale.",
+      },
       checkedAt: new Date().toISOString(),
     },
     { headers: { "Cache-Control": "no-store" } },
