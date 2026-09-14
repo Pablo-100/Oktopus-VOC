@@ -23,6 +23,24 @@ const NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 const PER_PAGE = 2000
 const BOOTSTRAP_DAYS = 7 // 1er run : profondeur de la fenêtre initiale
 const OVERLAP_MIN = 30 // chevauchement pour ne rien rater entre 2 runs
+
+/**
+ * Fenêtre maximale traitée par exécution.
+ *
+ * Sans borne, la fenêtre demandée est `now - last_sync`, qui grandit tant que
+ * le cron ne tourne pas. Passé un certain écart, la requête NVD ne tient plus
+ * dans le budget de 60 s de la fonction : elle est tuée, `last_sync` — écrit
+ * seulement en fin de parcours — n'avance jamais, et l'exécution suivante
+ * redemande exactement la même fenêtre trop grande. Le rattrapage devient
+ * impossible : quatre jours d'arrêt suffisaient à figer la synchronisation
+ * définitivement.
+ *
+ * En bornant la fenêtre, chaque exécution progresse d'au plus 12 h et écrit son
+ * avancement. Un écart de quatre jours se résorbe donc en huit exécutions —
+ * quarante minutes au rythme de cinq minutes — au lieu de ne jamais se
+ * résorber.
+ */
+const MAX_WINDOW_HOURS = 12
 const MAX_ALERTS_PER_RUN = 20
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -128,6 +146,15 @@ export type SyncResult = {
   total: number
   since: string
   durationMs: number
+  /** Fin de la fenêtre réellement traitée par cette exécution. */
+  until?: string
+  /**
+   * `false` lorsqu'il reste du retard à rattraper : la fenêtre a été bornée et
+   * une nouvelle exécution est nécessaire. Permet à l'ordonnanceur et à
+   * `/api/health` de distinguer « à jour » de « en train de rattraper », deux
+   * états qui se ressemblaient jusqu'ici.
+   */
+  caughtUp?: boolean
   error?: string
 }
 
@@ -143,10 +170,16 @@ export async function syncCves(opts: { skipAlerts?: boolean } = {}): Promise<Syn
       ? new Date(lastSync.getTime() - OVERLAP_MIN * 60 * 1000)
       : new Date(now.getTime() - BOOTSTRAP_DAYS * 864e5)
 
+    // Borne haute de la fenêtre : au plus MAX_WINDOW_HOURS après son début.
+    // C'est ce qui rend le rattrapage possible (cf. MAX_WINDOW_HOURS).
+    const maxEnd = new Date(since.getTime() + MAX_WINDOW_HOURS * 3600_000)
+    const until = maxEnd < now ? maxEnd : now
+    const caughtUp = until >= now
+
     // 1er run : CVE PUBLIÉES (dataset récent propre). Ensuite : CVE MODIFIÉES (incrémental).
     const base: Record<string, string> = lastSync
-      ? { lastModStartDate: since.toISOString(), lastModEndDate: now.toISOString() }
-      : { pubStartDate: since.toISOString(), pubEndDate: now.toISOString() }
+      ? { lastModStartDate: since.toISOString(), lastModEndDate: until.toISOString() }
+      : { pubStartDate: since.toISOString(), pubEndDate: until.toISOString() }
     const raw = await fetchNvdWindow(base)
     const vulns = processNvd({ vulnerabilities: raw })
     await enrichServer(vulns)
@@ -157,14 +190,17 @@ export async function syncCves(opts: { skipAlerts?: boolean } = {}): Promise<Syn
 
     const totalRows = (await sql`SELECT COUNT(*)::int AS n FROM cves`) as Array<{ n: number }>
     const total = totalRows[0]?.n ?? 0
+    // `last_sync` avance jusqu'à la FIN DE LA FENÊTRE traitée, pas jusqu'à
+    // `now` : sinon l'exécution prétendrait avoir couvert un intervalle qu'elle
+    // n'a pas demandé, et les CVE de cet intervalle seraient perdues.
     await sql`
       INSERT INTO sync_state (id, last_sync, last_run_at, total_cves, last_status)
-      VALUES (1, ${now.toISOString()}, ${now.toISOString()}, ${total}, 'ok')
+      VALUES (1, ${until.toISOString()}, ${now.toISOString()}, ${total}, 'ok')
       ON CONFLICT (id) DO UPDATE SET
         last_sync = EXCLUDED.last_sync, last_run_at = EXCLUDED.last_run_at,
         total_cves = EXCLUDED.total_cves, last_status = 'ok'`
 
-    const result: SyncResult = { ok: true, fetched: raw.length, processed: vulns.length, alerted, total, since: since.toISOString(), durationMs: Date.now() - t0 }
+    const result: SyncResult = { ok: true, fetched: raw.length, processed: vulns.length, alerted, total, since: since.toISOString(), durationMs: Date.now() - t0, caughtUp, until: until.toISOString() }
     console.log("[collector] sync OK", result)
     return result
   } catch (e) {
