@@ -57,7 +57,7 @@ function VerifyForm() {
     const { error } = await authClient.emailOtp.verifyEmail({ email, otp })
     if (error) {
       setVerifying(false)
-      setErr(friendlyAuthError(error.code || error.message)); setDigits(["", "", "", "", "", ""]); inputs.current[0]?.focus()
+      setErr(friendlyAuthError(error)); setDigits(["", "", "", "", "", ""]); inputs.current[0]?.focus()
       return
     }
     toast.success("Email verified ✅")
@@ -72,7 +72,7 @@ function VerifyForm() {
     setResending(true); setErr(null)
     const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "email-verification" })
     setResending(false)
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else toast.success("New code sent — check your inbox (and spam folder)")
   }
 

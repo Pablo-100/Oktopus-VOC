@@ -24,13 +24,13 @@ export default function ForgotPasswordPage() {
     setLoading(true); setErr(null)
     const { error } = await authClient.forgetPassword.emailOtp({ email })
     setLoading(false)
-    if (error) setErr(friendlyAuthError(error.code || error.message))
+    if (error) setErr(friendlyAuthError(error))
     else { toast.success("Code sent — check your inbox (and spam folder)"); setStep("reset") }
   }
 
   async function resend() {
     const { error } = await authClient.forgetPassword.emailOtp({ email })
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else toast.success("New code sent")
   }
 
@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
     setLoading(true); setErr(null)
     const { error } = await authClient.emailOtp.resetPassword({ email, otp, password })
     setLoading(false)
-    if (error) setErr(friendlyAuthError(error.code || error.message))
+    if (error) setErr(friendlyAuthError(error))
     else { toast.success("Password reset"); router.push("/login?reset=1") }
   }
 

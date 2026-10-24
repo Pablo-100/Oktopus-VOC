@@ -29,14 +29,14 @@ function SignupForm() {
     const { error } = await authClient.signUp.email({ name, email, password })
     setLoading(false)
     // Un code OTP a été envoyé (sendVerificationOnSignUp) -> écran de saisie du code
-    if (error) setErr(friendlyAuthError(error.code || error.message))
+    if (error) setErr(friendlyAuthError(error))
     else router.push(`/verify-email?email=${encodeURIComponent(email)}`)
   }
 
   async function withProvider(provider: "github" | "google") {
     setSocial(provider); setErr(null)
     const { error } = await authClient.signIn.social({ provider, callbackURL: "/dashboard", errorCallbackURL: "/signup" })
-    if (error) { setSocial(null); setErr(friendlyAuthError(error.code || error.message)) }
+    if (error) { setSocial(null); setErr(friendlyAuthError(error)) }
   }
 
   return (
