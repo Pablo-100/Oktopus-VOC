@@ -167,9 +167,10 @@ export type SyncResult = {
  * panne. On traite donc des fenêtres successives tant que le budget le permet,
  * chacune écrivant son avancement : si la fonction est tuée en cours de route,
  * le travail des fenêtres déjà terminées est conservé.
- * 40 s laisse une marge confortable sous le maxDuration de 60 s.
+ * 240 s laisse une marge confortable sous le maxDuration de 300 s (Hobby + Fluid), et
+ * reste sous l'intervalle de 5 min du planificateur : deux exécutions ne se chevauchent pas.
  */
-const RUN_BUDGET_MS = 40_000
+const RUN_BUDGET_MS = 240_000
 
 /** Traite UNE fenêtre bornée et fait avancer `last_sync`. */
 async function syncOneWindow(): Promise<{ fetched: number; processed: number; since: Date; until: Date; caughtUp: boolean }> {

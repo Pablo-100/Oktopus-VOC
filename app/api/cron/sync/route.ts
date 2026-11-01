@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import { syncCves } from "@/lib/collector"
 
 // Autorise jusqu'à 60 s d'exécution (Vercel). Le seed initial se fait en local.
-export const maxDuration = 60
+// 300 s = plafond Hobby avec Fluid compute. Laisse le rattrapage enchaîner
+// assez de fenêtres pour combler plusieurs jours de retard en un seul appel.
+export const maxDuration = 300
 export const dynamic = "force-dynamic"
 
 /**
