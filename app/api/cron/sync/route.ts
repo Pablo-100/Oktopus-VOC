@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server"
+import { NextResponse, after } from "next/server"
 import { syncCves } from "@/lib/collector"
-import { syncZeroDays } from "@/lib/zero-day-collector"
 
 // Autorise jusqu'à 60 s d'exécution (Vercel). Le seed initial se fait en local.
 // 300 s = plafond Hobby avec Fluid compute. Laisse le rattrapage enchaîner
@@ -34,23 +33,20 @@ export function authorized(req: Request): boolean {
 
 export async function GET(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const t0 = Date.now()
-  const cveResult = await syncCves()
-
-  // Les 0-days ont leur propre route, mais un planificateur externe configuré
-  // avec une seule URL ne l'appelle jamais : le flux 0-day était figé depuis le
-  // 30/09 sans que rien ne le signale. Une fois les CVE à jour, le temps restant
-  // sur les 300 s suffit largement, donc on l'enchaîne ici. Pendant un
-  // rattrapage CVE, on le laisse pour l'appel suivant afin de ne pas dépasser.
-  let zeroDays: unknown = { skipped: "cve catch-up in progress" }
-  if (cveResult.ok && cveResult.caughtUp && Date.now() - t0 < 150_000) {
-    try {
-      zeroDays = await syncZeroDays()
-    } catch (e) {
-      zeroDays = { ok: false, error: (e as Error).message }
-    }
+  // Réponse IMMÉDIATE, travail en arrière-plan via after() (waitUntil sur
+  // Vercel, jusqu'au maxDuration de 300 s). cron-job.org coupe la requête à
+  // 30 s, compte un échec, et DÉSACTIVE le job après plusieurs échecs — c'est
+  // ce qui a figé la synchro quand un rattrapage dépassait 30 s. Le résultat
+  // reste consultable dans sync_state et les logs.
+  // `?wait=1` garde l'ancien comportement synchrone (debug / workflow manuel).
+  if (new URL(req.url).searchParams.get("wait") === "1") {
+    const cveResult = await syncCves()
+    return NextResponse.json({ cve: cveResult }, { status: cveResult.ok ? 200 : 500 })
   }
-  return NextResponse.json({ cve: cveResult, zeroDays }, { status: cveResult.ok ? 200 : 500 })
+  after(async () => {
+    await syncCves()
+  })
+  return NextResponse.json({ cve: { started: true } }, { status: 200 })
 }
 
 /**
