@@ -158,49 +158,83 @@ export type SyncResult = {
   error?: string
 }
 
+/**
+ * Budget de temps pour enchaîner les fenêtres dans UNE exécution.
+ *
+ * Une seule fenêtre de 12 h par exécution rendait le rattrapage interminable :
+ * après 18 jours d'arrêt (quota Neon épuisé) il fallait ~37 exécutions, soit
+ * ~37 h au rythme horaire — les CVE affichées restaient figées au jour de la
+ * panne. On traite donc des fenêtres successives tant que le budget le permet,
+ * chacune écrivant son avancement : si la fonction est tuée en cours de route,
+ * le travail des fenêtres déjà terminées est conservé.
+ * 40 s laisse une marge confortable sous le maxDuration de 60 s.
+ */
+const RUN_BUDGET_MS = 40_000
+
+/** Traite UNE fenêtre bornée et fait avancer `last_sync`. */
+async function syncOneWindow(): Promise<{ fetched: number; processed: number; since: Date; until: Date; caughtUp: boolean }> {
+  const state = (await sql`SELECT last_sync FROM sync_state WHERE id = 1`) as Array<{ last_sync: string | null }>
+  const lastSync = state[0]?.last_sync ? new Date(state[0].last_sync) : null
+  const now = new Date()
+  const since = lastSync
+    ? new Date(lastSync.getTime() - OVERLAP_MIN * 60 * 1000)
+    : new Date(now.getTime() - BOOTSTRAP_DAYS * 864e5)
+
+  // Borne haute de la fenêtre : au plus MAX_WINDOW_HOURS après son début.
+  const maxEnd = new Date(since.getTime() + MAX_WINDOW_HOURS * 3600_000)
+  const until = maxEnd < now ? maxEnd : now
+  const caughtUp = until >= now
+
+  // 1er run : CVE PUBLIÉES (dataset récent propre). Ensuite : CVE MODIFIÉES (incrémental).
+  const base: Record<string, string> = lastSync
+    ? { lastModStartDate: since.toISOString(), lastModEndDate: until.toISOString() }
+    : { pubStartDate: since.toISOString(), pubEndDate: until.toISOString() }
+  const raw = await fetchNvdWindow(base)
+  const vulns = processNvd({ vulnerabilities: raw })
+  await enrichServer(vulns)
+  await batchUpsert(vulns)
+
+  // `last_sync` avance jusqu'à la FIN DE LA FENÊTRE traitée, pas jusqu'à `now`.
+  await sql`
+    INSERT INTO sync_state (id, last_sync, last_run_at, last_status)
+    VALUES (1, ${until.toISOString()}, ${now.toISOString()}, 'ok')
+    ON CONFLICT (id) DO UPDATE SET
+      last_sync = EXCLUDED.last_sync, last_run_at = EXCLUDED.last_run_at, last_status = 'ok'`
+  return { fetched: raw.length, processed: vulns.length, since, until, caughtUp }
+}
+
 /** Cycle complet de synchronisation (appelé par le cron). `skipAlerts` pour le seed initial. */
 export async function syncCves(opts: { skipAlerts?: boolean } = {}): Promise<SyncResult> {
   const t0 = Date.now()
   await initDb()
   try {
-    const state = (await sql`SELECT last_sync FROM sync_state WHERE id = 1`) as Array<{ last_sync: string | null }>
-    const lastSync = state[0]?.last_sync ? new Date(state[0].last_sync) : null
-    const now = new Date()
-    const since = lastSync
-      ? new Date(lastSync.getTime() - OVERLAP_MIN * 60 * 1000)
-      : new Date(now.getTime() - BOOTSTRAP_DAYS * 864e5)
+    let fetched = 0
+    let processed = 0
+    let firstSince: Date | null = null
+    let w: Awaited<ReturnType<typeof syncOneWindow>>
+    // Toujours au moins une fenêtre ; on continue tant qu'il reste du retard
+    // ET du budget. La durée de la fenêtre précédente sert d'estimation pour la
+    // suivante, afin de ne pas en commencer une qu'on ne pourrait pas finir.
+    for (;;) {
+      const tw = Date.now()
+      w = await syncOneWindow()
+      fetched += w.fetched
+      processed += w.processed
+      firstSince ??= w.since
+      const last = Date.now() - tw
+      if (w.caughtUp || Date.now() - t0 + last > RUN_BUDGET_MS) break
+      await sleep(700) // courtoisie rate-limit NVD entre deux fenêtres
+    }
 
-    // Borne haute de la fenêtre : au plus MAX_WINDOW_HOURS après son début.
-    // C'est ce qui rend le rattrapage possible (cf. MAX_WINDOW_HOURS).
-    const maxEnd = new Date(since.getTime() + MAX_WINDOW_HOURS * 3600_000)
-    const until = maxEnd < now ? maxEnd : now
-    const caughtUp = until >= now
-
-    // 1er run : CVE PUBLIÉES (dataset récent propre). Ensuite : CVE MODIFIÉES (incrémental).
-    const base: Record<string, string> = lastSync
-      ? { lastModStartDate: since.toISOString(), lastModEndDate: until.toISOString() }
-      : { pubStartDate: since.toISOString(), pubEndDate: until.toISOString() }
-    const raw = await fetchNvdWindow(base)
-    const vulns = processNvd({ vulnerabilities: raw })
-    await enrichServer(vulns)
-    await batchUpsert(vulns)
     // Hygiène : retire de alerts_sent les entrées orphelines (CVE absentes de la base)
     await sql`DELETE FROM alerts_sent a WHERE NOT EXISTS (SELECT 1 FROM cves c WHERE c.cve_id = a.cve_id)`
     const alerted = opts.skipAlerts ? 0 : await sendAlerts()
 
     const totalRows = (await sql`SELECT COUNT(*)::int AS n FROM cves`) as Array<{ n: number }>
     const total = totalRows[0]?.n ?? 0
-    // `last_sync` avance jusqu'à la FIN DE LA FENÊTRE traitée, pas jusqu'à
-    // `now` : sinon l'exécution prétendrait avoir couvert un intervalle qu'elle
-    // n'a pas demandé, et les CVE de cet intervalle seraient perdues.
-    await sql`
-      INSERT INTO sync_state (id, last_sync, last_run_at, total_cves, last_status)
-      VALUES (1, ${until.toISOString()}, ${now.toISOString()}, ${total}, 'ok')
-      ON CONFLICT (id) DO UPDATE SET
-        last_sync = EXCLUDED.last_sync, last_run_at = EXCLUDED.last_run_at,
-        total_cves = EXCLUDED.total_cves, last_status = 'ok'`
+    await sql`UPDATE sync_state SET total_cves = ${total} WHERE id = 1`
 
-    const result: SyncResult = { ok: true, fetched: raw.length, processed: vulns.length, alerted, total, since: since.toISOString(), durationMs: Date.now() - t0, caughtUp, until: until.toISOString() }
+    const result: SyncResult = { ok: true, fetched, processed, alerted, total, since: firstSince!.toISOString(), durationMs: Date.now() - t0, caughtUp: w.caughtUp, until: w.until.toISOString() }
     console.log("[collector] sync OK", result)
     return result
   } catch (e) {

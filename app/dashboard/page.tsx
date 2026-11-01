@@ -518,7 +518,11 @@ export default function DashboardPage() {
                 // An empty DATASET and an over-restrictive FILTER are different
                 // problems with different fixes; one message for both is what
                 // makes a fresh install look broken.
-                vulns.length === 0
+                // A failed load also leaves `vulns` empty: that is an outage,
+                // not a fresh install, so show the error rather than setup steps.
+                vulns.length === 0 && error
+                  ? <TableRow><TableCell colSpan={13} className="py-10 text-center text-sm text-red-400">⚠️ Could not load CVEs from the database: {error}. Retrying automatically every 60s.</TableCell></TableRow>
+                  : vulns.length === 0
                   ? <NoDataYet what="CVE data" syncPath="/api/cron/sync" colSpan={13} />
                   : <NoMatches what="CVE" colSpan={13} />
               ) : pageRows.map((v) => (

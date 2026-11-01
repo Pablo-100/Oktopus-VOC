@@ -11,7 +11,11 @@ name: OCTUPUS CVE Sync
 #
 # APP_URL is read as a repo *variable* first, then falls back to a *secret*,
 # so either works. It is intentionally NOT hardcoded: a hardcoded URL would
-# make every fork/clone silently sync someone else's deployment.
+# make every fork/clone silently sync someone else's deployment. The single
+# fallback below applies ONLY to the upstream repository (guarded by
+# github.repository), so forks still have to set their own APP_URL. It exists
+# because the variable went missing upstream and every scheduled run failed,
+# freezing the CVE and zero-day feeds.
 
 on:
   schedule:
@@ -29,7 +33,7 @@ jobs:
     steps:
       - name: Trigger synchronization
         env:
-          APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL || (github.repository == 'Pablo-100/Oktopus-VOC' && 'https://oktupus-voc.vercel.app' || '') }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ]; then
@@ -55,7 +59,7 @@ jobs:
       - name: Trigger zero-day synchronization
         if: always()
         env:
-          APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+          APP_URL: ${{ vars.APP_URL || secrets.APP_URL || (github.repository == 'Pablo-100/Oktopus-VOC' && 'https://oktupus-voc.vercel.app' || '') }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
