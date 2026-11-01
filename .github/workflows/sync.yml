@@ -15,7 +15,12 @@ name: OCTUPUS CVE Sync
 
 on:
   schedule:
-    - cron: "*/5 * * * *" # every 5 min (GitHub may delay by a few minutes)
+    # Hourly, NOT every 5 min: Neon suspends an idle compute only after 5 min, so a
+    # 5-minute trigger kept the database awake 24/7 and burned the free plan's
+    # monthly compute quota by mid-month — after which every DB call (including
+    # sign-in) fails. Runs at the same minute as exposure-monitoring so both
+    # share one wake-up.
+    - cron: "7 * * * *"
   workflow_dispatch: {} # "Run workflow" button for a manual trigger
 
 jobs:

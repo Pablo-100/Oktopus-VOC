@@ -19,7 +19,9 @@ name: OCTUPUS Exposure Monitoring
 
 on:
   schedule:
-    - cron: "*/15 * * * *" # every 15 min (GitHub may delay by a few minutes)
+    # Hourly, same minute as the CVE sync so both share one database wake-up
+    # (see sync.yml: frequent triggers kept Neon awake 24/7 and exhausted quota).
+    - cron: "7 * * * *"
   workflow_dispatch: {} # manual trigger
 
 # Never let two monitoring runs overlap. The worker also claims assets

@@ -91,7 +91,7 @@ export default function AccountPage() {
     setSavingName(true)
     const { error } = await authClient.updateUser({ name })
     setSavingName(false)
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { setNameEdit(null); toast.success("Name updated") }
   }
 
@@ -100,14 +100,14 @@ export default function AccountPage() {
     setSavingPw(true)
     const { error } = await authClient.changePassword({ currentPassword: curPw, newPassword: newPw, revokeOtherSessions: true })
     setSavingPw(false)
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { toast.success("Password changed — other sessions signed out"); setCurPw(""); setNewPw(""); loadSessions() }
   }
 
   async function linkProvider(provider: string) {
     setBusyProvider(provider)
     const { error } = await authClient.linkSocial({ provider: provider as "google" | "github", callbackURL: "/account" })
-    if (error) { setBusyProvider(null); toast.error(friendlyAuthError(error.code || error.message)) }
+    if (error) { setBusyProvider(null); toast.error(friendlyAuthError(error)) }
     // success -> OAuth redirect to the provider
   }
 
@@ -116,18 +116,18 @@ export default function AccountPage() {
     setBusyProvider(providerId)
     const { error } = await authClient.unlinkAccount({ providerId, accountId })
     setBusyProvider(null)
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { toast.success("Provider unlinked"); loadAccounts() }
   }
 
   async function revokeSession(token: string) {
     const { error } = await authClient.revokeSession({ token })
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { toast.success("Session revoked"); loadSessions() }
   }
   async function revokeOthers() {
     const { error } = await authClient.revokeOtherSessions()
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { toast.success("Other devices signed out"); loadSessions() }
   }
 
@@ -135,7 +135,7 @@ export default function AccountPage() {
     setSendingVerif(true)
     const { error } = await authClient.emailOtp.sendVerificationOtp({ email: u.email, type: "email-verification" })
     setSendingVerif(false)
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { toast.success("Code sent"); router.push(`/verify-email?email=${encodeURIComponent(u.email)}&redirect=/account`) }
   }
 
@@ -143,7 +143,7 @@ export default function AccountPage() {
     setDeleting(true)
     const { error } = await authClient.deleteUser({ password: delPw || undefined })
     setDeleting(false)
-    if (error) toast.error(friendlyAuthError(error.code || error.message))
+    if (error) toast.error(friendlyAuthError(error))
     else { toast.success("Account deleted"); router.replace("/") }
   }
 

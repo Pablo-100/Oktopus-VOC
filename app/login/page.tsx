@@ -30,14 +30,14 @@ function LoginForm() {
     setLoading(true); setErr(null)
     const { error } = await authClient.signIn.email({ email, password })
     setLoading(false)
-    if (error) setErr(friendlyAuthError(error.code || error.message))
+    if (error) setErr(friendlyAuthError(error))
     else router.push(dest)
   }
 
   async function withProvider(provider: "github" | "google") {
     setSocial(provider); setErr(null)
     const { error } = await authClient.signIn.social({ provider, callbackURL: dest, errorCallbackURL: "/login" })
-    if (error) { setSocial(null); setErr(friendlyAuthError(error.code || error.message)) }
+    if (error) { setSocial(null); setErr(friendlyAuthError(error)) }
   }
 
   return (

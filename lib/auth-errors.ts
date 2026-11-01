@@ -32,7 +32,30 @@ const MESSAGES: Record<string, string> = {
   rate_limited: "Too many attempts. Wait a moment and try again.",
 }
 
-export function friendlyAuthError(input?: string | null): string {
+/** Shape of the `error` object returned by the Better Auth client. */
+type AuthClientError = { code?: string; message?: string; status?: number; statusText?: string }
+
+/**
+ * Accepts either a code/message string (e.g. `?error=` from an OAuth redirect)
+ * or the client's `error` object.
+ *
+ * When the auth server itself fails (database unreachable, quota exceeded,
+ * function crash) it answers 5xx with no JSON body, so the client error carries
+ * neither `code` nor `message`. That used to collapse into the generic
+ * "Something went wrong", which looked like a user mistake and hid an outage.
+ * The status code is enough to say what actually happened.
+ */
+export function friendlyAuthError(input?: string | AuthClientError | null): string {
+  if (input && typeof input === "object") {
+    const text = input.code || input.message
+    if (!text) {
+      if (input.status === 429) return MESSAGES.too_many_requests
+      if (input.status && input.status >= 500)
+        return "The sign-in service is temporarily unavailable (server error). Please try again later."
+      return "Something went wrong. Try again."
+    }
+    input = text
+  }
   if (!input) return "Something went wrong. Try again."
   const key = input.toLowerCase().trim()
   if (MESSAGES[key]) return MESSAGES[key]
