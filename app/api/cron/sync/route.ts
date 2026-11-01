@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server"
 import { syncCves } from "@/lib/collector"
+import { outsideCronWindow } from "@/lib/cron-gate"
 
 // Autorise jusqu'à 60 s d'exécution (Vercel). Le seed initial se fait en local.
 // 300 s = plafond Hobby avec Fluid compute. Laisse le rattrapage enchaîner
@@ -33,6 +34,8 @@ export function authorized(req: Request): boolean {
 
 export async function GET(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const skip = outsideCronWindow(req)
+  if (skip) return skip
   // Réponse IMMÉDIATE, travail en arrière-plan via after() (waitUntil sur
   // Vercel, jusqu'au maxDuration de 300 s). cron-job.org coupe la requête à
   // 30 s, compte un échec, et DÉSACTIVE le job après plusieurs échecs — c'est

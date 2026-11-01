@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { syncZeroDays } from "@/lib/zero-day-collector"
 import { authorized } from "@/app/api/cron/sync/route"
+import { outsideCronWindow } from "@/lib/cron-gate"
 
 /**
  * ZERO-DAY SYNC — its own scheduled invocation.
@@ -23,6 +24,8 @@ export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const skip = outsideCronWindow(req)
+  if (skip) return skip
   const result = await syncZeroDays()
   return NextResponse.json(result, { status: result.ok ? 200 : 500 })
 }
